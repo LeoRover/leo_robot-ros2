@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>leo_robot</name>
+  <version>0.0.0</version>
+  <description>Metapackage of software to install on Leo Rover.</description>
+
+  <maintainer email="support@fictionlab.pl">Fictionlab</maintainer>
+  <author email="blazej@fictionlab.pl">Błażej Sowa</author>
+
+  <license>MIT</license>
+
+  <url type="website">http://wiki.ros.org/leo_robot</url>
+  <url type="bugtracker">https://github.com/LeoRover/leo_robot/issues</url>
+  <url type="repository">https://github.com/LeoRover/leo_robot</url>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>leo_bringup</exec_depend>
+  <!-- <exec_depend>leo_fw</exec_depend> -->
+
+  <exec_depend>leo</exec_depend>  
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <architecture_independent/>
+  </export>
+</package>

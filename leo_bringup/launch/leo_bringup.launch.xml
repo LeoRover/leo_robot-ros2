@@ -1,0 +1,28 @@
+<launch version="0.1.1">
+
+  <arg
+    name="model"
+    default="$(find-pkg-share leo_description)/urdf/leo.urdf.xacro"
+    description="Absolute path to robot urdf.xacro file" />
+  <arg name="tf_frame_prefix" default="" />
+
+  <include file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
+    <arg name="model" value="$(var model)" />
+  </include>
+
+  <node pkg="web_video_server"
+    exec="web_video_server" />
+
+  <node name="rosbridge_server"
+    pkg="rosbridge_server"
+    exec="rosbridge_websocket">
+    <param name="unregister_timeout" value="86400" />
+  </node>
+
+  <node pkg="rosapi" exec="rosapi_node">
+    <param name="topics_glob" value="[*]" />
+    <param name="services_glob" value="[*]" />
+    <param name="params_glob" value="[*]" />
+  </node>
+
+</launch>
