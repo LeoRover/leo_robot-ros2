@@ -28,7 +28,6 @@
   <!-- <exec_depend>leo_fw</exec_depend> -->
 
   <exec_depend>web_video_server</exec_depend>
-  <exec_depend>micro_ros_agent</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
