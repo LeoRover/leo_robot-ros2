@@ -25,4 +25,7 @@
     <param name="params_glob" value="[*]" />
   </node>
 
+  <node pkg="micro_ros_agent" exec="micro_ros_agent"
+    args="serial -D /dev/serial0 -b 460800" />
+
 </launch>
