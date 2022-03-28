@@ -25,4 +25,8 @@
     <param name="params_glob" value="[*]" />
   </node>
 
+  <node pkg="leo_fw" exec="firmware_message_converter">
+    <param from="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
+  </node>
+
 </launch>
