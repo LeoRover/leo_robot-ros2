@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+
+import argparse
+
+import leo_fw
+from leo_fw.test_hw import TestMode
+
+parser = argparse.ArgumentParser(description="Test controller controller")
+
+parser.add_argument(
+    "-m",
+    dest="hardware",
+    type=TestMode,
+    choices=list(TestMode),
+    default="all",
+    help="select test mode",
+)
+
+args = parser.parse_args()
+
+leo_fw.test_hw(hardware=args.hardware)

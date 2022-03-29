@@ -1,0 +1,9 @@
+[MASTER]
+disable=
+    missing-module-docstring, # We don't require docstrings for now
+    missing-class-docstring,
+    missing-function-docstring,
+    bad-continuation, # Doesn't like black formatter
+    unsubscriptable-object, # Gives false positives for typing
+    too-many-instance-attributes,
+    duplicate-code # Common part of code in test_hw and flash

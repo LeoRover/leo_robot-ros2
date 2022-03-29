@@ -1,0 +1,13 @@
+tests:
+- pwm: 10
+  torque: 0.02
+  time: 2
+- pwm: 20
+  torque: 0.1
+  time: 2
+- pwm: 30 
+  torque: 0.2
+  time: 2
+- pwm: 40 
+  torque: 0.3
+  time: 2

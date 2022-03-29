@@ -1,0 +1,10 @@
+tests:
+- velocity: 2.0
+  time: 1
+  offset: 0.3
+- velocity: -2.0
+  time: 2
+  offset: 0.3
+- velocity: 1.0
+  time: 2
+  offset: 0.3
