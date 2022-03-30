@@ -102,11 +102,12 @@ class HardwareTester(Node):
         speed_limit = 1.0
 
         for pwm in range(30):
+            pwm_value = float(pwm)
 
-            self.cmd_pwmfl_pub.publish(Float32(data=pwm))
-            self.cmd_pwmfr_pub.publish(Float32(data=pwm))
-            self.cmd_pwmrl_pub.publish(Float32(data=-pwm))
-            self.cmd_pwmrr_pub.publish(Float32(data=-pwm))
+            self.cmd_pwmfl_pub.publish(Float32(data=pwm_value))
+            self.cmd_pwmfr_pub.publish(Float32(data=pwm_value))
+            self.cmd_pwmrl_pub.publish(Float32(data=-pwm_value))
+            self.cmd_pwmrr_pub.publish(Float32(data=-pwm_value))
 
             rclpy.spin_until_future_complete(self, Future(), None, 0.2)
 
@@ -124,26 +125,25 @@ class HardwareTester(Node):
         else:
             print(CSIColor.OKGREEN + "UNLOAD" + CSIColor.ENDC)
 
-        self.cmd_pwmfl_pub.publish(Float32(data=0))
-        self.cmd_pwmfr_pub.publish(Float32(data=0))
-        self.cmd_pwmrl_pub.publish(Float32(data=0))
-        self.cmd_pwmrr_pub.publish(Float32(data=0))
+        self.cmd_pwmfl_pub.publish(Float32(data=0.0))
+        self.cmd_pwmfr_pub.publish(Float32(data=0.0))
+        self.cmd_pwmrl_pub.publish(Float32(data=0.0))
+        self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
     def check_encoder(self) -> None:
-        is_error = 0
-        is_error_tab = [0, 0, 0, 0]
+        is_error = [False] * 4
 
-        if self.is_wheel_loaded == 1:
-            wheel_valid = parse_yaml(self.path + "encoder_load.yaml")
-        elif self.is_wheel_loaded == 0:
-            wheel_valid = parse_yaml(self.path + "encoder.yaml")
+        if self.is_wheel_loaded:
+            wheel_valid = parse_yaml(os.path.join(self.path, "encoder_load.yaml"))
+        else:
+            wheel_valid = parse_yaml(os.path.join(self.path, "encoder.yaml"))
 
         for wheel_test in wheel_valid["tests"]:
 
-            self.cmd_velfl_pub.publish(wheel_test["velocity"])
-            self.cmd_velfr_pub.publish(wheel_test["velocity"])
-            self.cmd_velrl_pub.publish(wheel_test["velocity"])
-            self.cmd_velrr_pub.publish(wheel_test["velocity"])
+            self.cmd_velfl_pub.publish(Float32(data=wheel_test["velocity"]))
+            self.cmd_velfr_pub.publish(Float32(data=wheel_test["velocity"]))
+            self.cmd_velrl_pub.publish(Float32(data=wheel_test["velocity"]))
+            self.cmd_velrr_pub.publish(Float32(data=wheel_test["velocity"]))
 
             rclpy.spin_until_future_complete(self, Future(), None, wheel_test["time"])
 
@@ -152,17 +152,16 @@ class HardwareTester(Node):
 
             for i in range(0, 4):
                 if not speed_min < self.wheel_data.velocity[i] < speed_max:
-                    is_error = 1
-                    is_error_tab[i] = 1
+                    is_error[i] = True
 
-        self.cmd_velfl_pub.publish(Float32(data=0))
-        self.cmd_velfr_pub.publish(Float32(data=0))
-        self.cmd_velrl_pub.publish(Float32(data=0))
-        self.cmd_velrr_pub.publish(Float32(data=0))
+        self.cmd_velfl_pub.publish(Float32(data=0.0))
+        self.cmd_velfr_pub.publish(Float32(data=0.0))
+        self.cmd_velrl_pub.publish(Float32(data=0.0))
+        self.cmd_velrr_pub.publish(Float32(data=0.0))
 
-        if is_error == 1:
+        if any(is_error):
             error_msg = "ERROR WHEEL ENCODER "
-            error_msg += str(is_error_tab)
+            error_msg += str(is_error)
             print(CSIColor.FAIL + error_msg + CSIColor.ENDC)
             return False
 
@@ -170,38 +169,36 @@ class HardwareTester(Node):
         return True
 
     def check_torque(self) -> None:
-        is_error = 0
-        is_error_tab = [0, 0, 0, 0]
+        is_error = [False] * 4
 
-        if self.is_wheel_loaded == 1:
-            torque_valid = parse_yaml(self.path + "torque_load.yaml")
-        elif self.is_wheel_loaded == 0:
-            torque_valid = parse_yaml(self.path + "torque.yaml")
+        if self.is_wheel_loaded:
+            torque_valid = parse_yaml(os.path.join(self.path, "torque_load.yaml"))
+        elif self.is_wheel_loaded:
+            torque_valid = parse_yaml(os.path.join(self.path, "torque.yaml"))
 
         for torque_test in torque_valid["tests"]:
-            self.cmd_pwmfl_pub.publish(torque_test["pwm"])
-            self.cmd_pwmfr_pub.publish(torque_test["pwm"])
-            self.cmd_pwmrl_pub.publish(-torque_test["pwm"])
-            self.cmd_pwmrr_pub.publish(-torque_test["pwm"])
+            self.cmd_pwmfl_pub.publish(Float32(data=torque_test["pwm"]))
+            self.cmd_pwmfr_pub.publish(Float32(data=torque_test["pwm"]))
+            self.cmd_pwmrl_pub.publish(Float32(data=-torque_test["pwm"]))
+            self.cmd_pwmrr_pub.publish(Float32(data=-torque_test["pwm"]))
 
             rclpy.spin_until_future_complete(self, Future(), None, torque_test["time"])
 
             torque_min = torque_test["torque"]
-            torque_max = torque_test["torque"] + 1
+            torque_max = torque_test["torque"] + 1.0
 
-            for i in range(0, 4):
+            for i in range(4):
                 if not torque_min < self.wheel_data.torque[i] < torque_max:
-                    is_error = 1
-                    is_error_tab[i] = 1
+                    is_error[i] = True
 
-        self.cmd_pwmfl_pub.publish(Float32(data=0))
-        self.cmd_pwmfr_pub.publish(Float32(data=0))
-        self.cmd_pwmrl_pub.publish(Float32(data=0))
-        self.cmd_pwmrr_pub.publish(Float32(data=0))
+        self.cmd_pwmfl_pub.publish(Float32(data=0.0))
+        self.cmd_pwmfr_pub.publish(Float32(data=0.0))
+        self.cmd_pwmrl_pub.publish(Float32(data=0.0))
+        self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
-        if is_error == 1:
+        if any(is_error):
             error_msg = "ERROR WHEEL TORQUE "
-            error_msg += str(is_error_tab)
+            error_msg += str(is_error)
             print(CSIColor.FAIL + error_msg + CSIColor.ENDC)
             return False
 
@@ -210,7 +207,7 @@ class HardwareTester(Node):
 
     def check_imu(self) -> bool:
         msg_cnt = 0
-        time_last_msg = time.time()
+        time_last_msg = time.monotonic()
         imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))
 
         accel_del = imu_valid["imu"]["accel_del"]
@@ -226,7 +223,7 @@ class HardwareTester(Node):
         while msg_cnt < 50:
             rclpy.spin_once(self)
 
-            time_now = time.time()
+            time_now = time.monotonic()
             if time_last_msg + imu_valid["imu"]["timeout"] < time_now:
                 print(CSIColor.WARNING + "TIMEOUT" + CSIColor.ENDC)
                 return False
@@ -256,13 +253,13 @@ class HardwareTester(Node):
 
     def check_battery(self) -> bool:
         msg_cnt = 0
-        time_last_msg = time.time()
+        time_last_msg = time.monotonic()
         batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))
 
         while msg_cnt < 50:
             rclpy.spin_once(self)
 
-            time_now = time.time()
+            time_now = time.monotonic()
             if time_last_msg + batt_valid["battery"]["timeout"] < time_now:
                 print(CSIColor.WARNING + "TIMEOUT" + CSIColor.ENDC)
                 return False
@@ -312,7 +309,7 @@ def test_hw(
 
     #####################################################
 
-    board_type = BoardType.LEOCORE
+    board_type = None
 
     if firmware_node_active:
         write_flush("--> Trying to determine board type.. ")
@@ -374,3 +371,8 @@ def test_hw(
     if hardware in (TestMode.ALL, TestMode.TORQUE) and board_type == BoardType.LEOCORE:
         write_flush("--> Torque sensors validation.. ")
         node.check_torque()
+
+    #####################################################
+
+    node.destroy_node()
+    rclpy.shutdown()
