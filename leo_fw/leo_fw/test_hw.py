@@ -287,92 +287,85 @@ def test_hw(
 
     write_flush("--> Initializing ROS node.. ")
     rclpy.init()
-    node = HardwareTester()
+    tester = HardwareTester()
     print("DONE")
 
-    #####################################################
+    try:
+        write_flush("--> Checking if firmware node is active.. ")
 
-    write_flush("--> Checking if firmware node is active.. ")
+        if tester.get_namespace() + "firmware" in tester.get_node_names():
+            print("YES")
+        else:
+            print("NO")
+            print(
+                "Firmware node is not active. "
+                "Will not be able to validate hardware. "
+                "Try to flash the firmware or restart the Micro-ROS Agent."
+            )
+            return
 
-    if node.get_namespace() + "firmware" in node.get_node_names():
-        print("YES")
-        firmware_node_active = True
-    else:
-        print("NO")
-        firmware_node_active = False
-        print(
-            "Firmware node is not active. "
-            "Will not be able to validate hardware. "
-            "Try to flash the firmware or restart the Micro-ROS Agent."
-        )
-        return
+        #####################################################
 
-    #####################################################
-
-    board_type = None
-
-    if firmware_node_active:
         write_flush("--> Trying to determine board type.. ")
 
-        board_type = determine_board(node)
+        board_type = None
+        board_type = determine_board(tester)
 
         if board_type is not None:
             print("SUCCESS")
         else:
             print("FAIL")
+            print(
+                "Can not determine board type. "
+                "Update the firmware and try to rerun the script."
+            )
+            return
 
-    #####################################################
+        #####################################################
 
-    current_firmware_version = "<unknown>"
-
-    if firmware_node_active:
         write_flush("--> Trying to check the current firmware version.. ")
 
-        current_firmware_version = check_firmware_version(node)
+        current_firmware_version = "<unknown>"
+        current_firmware_version = check_firmware_version(tester)
 
         if current_firmware_version != "<unknown>":
             print("SUCCESS")
         else:
             print("FAIL")
 
-    #####################################################
+        #####################################################
 
-    if board_type is None:
-        print(
-            "Can not determine board type. "
-            "Update the firmware and try to rerun the script."
-        )
-        return
+        if board_type == BoardType.CORE2:
+            print(f"Board type: Core2ROS")
+        elif board_type == BoardType.LEOCORE:
+            print(f"Board type: LeoCore")
+        print(f"Firmware version: {current_firmware_version}")
 
-    if board_type == BoardType.CORE2:
-        print(f"Board type: Core2ROS")
-    elif board_type == BoardType.LEOCORE:
-        print(f"Board type: LeoCore")
-    print(f"Firmware version: {current_firmware_version}")
+        #####################################################
 
-    #####################################################
+        if hardware in (TestMode.ALL, TestMode.BATTERY):
+            write_flush("--> Battery validation.. ")
+            tester.check_battery()
 
-    if hardware in (TestMode.ALL, TestMode.BATTERY):
-        write_flush("--> Battery validation.. ")
-        node.check_battery()
+        if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
+            write_flush("--> IMU validation.. ")
+            tester.check_imu()
 
-    if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
-        write_flush("--> IMU validation.. ")
-        node.check_imu()
+        if hardware in (TestMode.ALL, TestMode.TORQUE, TestMode.ENCODER):
+            write_flush("--> Motors load test.. ")
+            tester.check_motor_load()
 
-    if hardware in (TestMode.ALL, TestMode.TORQUE, TestMode.ENCODER):
-        write_flush("--> Motors load test.. ")
-        node.check_motor_load()
+        if hardware in (TestMode.ALL, TestMode.ENCODER):
+            write_flush("--> Encoders validation.. ")
+            tester.check_encoder()
 
-    if hardware in (TestMode.ALL, TestMode.ENCODER):
-        write_flush("--> Encoders validation.. ")
-        node.check_encoder()
+        if (
+            hardware in (TestMode.ALL, TestMode.TORQUE)
+            and board_type == BoardType.LEOCORE
+        ):
+            write_flush("--> Torque sensors validation.. ")
+            tester.check_torque()
 
-    if hardware in (TestMode.ALL, TestMode.TORQUE) and board_type == BoardType.LEOCORE:
-        write_flush("--> Torque sensors validation.. ")
-        node.check_torque()
-
-    #####################################################
-
-    node.destroy_node()
-    rclpy.shutdown()
+    finally:
+        tester.destroy_node()
+        rclpy.shutdown()
