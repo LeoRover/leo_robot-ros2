@@ -64,6 +64,7 @@ def flash_firmware(
     #####################################################
 
     write_flush("--> Initializing ROS node.. ")
+    rclpy.init()
     node = rclpy.create_node("firmware_flasher")
     print("DONE")
 
