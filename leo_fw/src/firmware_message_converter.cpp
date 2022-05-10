@@ -14,14 +14,17 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
+namespace leo_fw
+{
 
 class FirmwareMessageConverter : public rclcpp::Node
 {
 public:
-  FirmwareMessageConverter()
-  : Node("firmware_message_converter", rclcpp::NodeOptions()
+  FirmwareMessageConverter(rclcpp::NodeOptions options)
+  : Node("firmware_message_converter", options
       .start_parameter_services(false)
-      .start_parameter_event_publisher(false))
+      .start_parameter_event_publisher(false)
+      .use_intra_process_comms(true))
   {
     robot_frame_id_ = declare_parameter("robot_frame_id", robot_frame_id_);
     odom_frame_id_ = declare_parameter("odom_frame_id", odom_frame_id_);
@@ -194,15 +197,7 @@ private:
   rclcpp::Subscription<leo_msgs::msg::Imu>::SharedPtr imu_sub_;
 };
 
-int main(int argc, char ** argv)
-{
-  rclcpp::init(argc, argv);
+}  // namespace leo_fw
 
-  auto node = std::make_shared<FirmwareMessageConverter>();
-
-  rclcpp::executors::MultiThreadedExecutor executor;
-  executor.add_node(node);
-  executor.spin();
-
-  rclcpp::shutdown();
-}
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(leo_fw::FirmwareMessageConverter)
