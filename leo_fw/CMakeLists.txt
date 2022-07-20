@@ -14,6 +14,7 @@ add_library(leo_fw SHARED
 )
 target_link_libraries(leo_fw
   rclcpp::rclcpp
+  rclcpp_components::component
 )
 ament_target_dependencies(leo_fw
   sensor_msgs
