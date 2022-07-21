@@ -16,7 +16,7 @@
   <node name="rosbridge_server"
     pkg="rosbridge_server"
     exec="rosbridge_websocket">
-    <param name="unregister_timeout" value="86400" />
+    <param name="unregister_timeout" value="86400.0" />
   </node>
 
   <node pkg="rosapi" exec="rosapi_node">
