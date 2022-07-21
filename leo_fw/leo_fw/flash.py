@@ -8,6 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from .utils import is_tool, write_flush, query_yes_no, prompt_options
 from .board import BoardType, determine_board, check_firmware_version
+from .agent import agent_check_active, agent_start, agent_stop
 
 
 def flash_core2(bootloader_path: str, firmware_path: str):
@@ -72,10 +73,11 @@ def flash_firmware(
 
     write_flush("--> Checking if Micro-ROS Agent is running.. ")
 
-    # TODO Check if Micro-ROS agent is running
-
-    print("YES")
-    uros_agent_running = True
+    uros_agent_running = agent_check_active()
+    if uros_agent_running:
+        print("YES")
+    else:
+        print("NO")
 
     #####################################################
 
@@ -154,7 +156,7 @@ def flash_firmware(
 
     if uros_agent_running:
         write_flush("--> Stopping the Micro-ROS Agent.. ")
-        # TODO Stop micro-ROS agent
+        agent_stop()
         print("DONE")
 
     #####################################################
@@ -168,7 +170,7 @@ def flash_firmware(
         if firmware_path is None:
             firmware_path = os.path.join(
                 get_package_share_directory("leo_fw"),
-                "firmware/core2_firmware.bin",
+                "data/firmware_binaries/core2_firmware.bin",
             )
 
         flash_core2(bootloader_path, firmware_path)
@@ -177,7 +179,7 @@ def flash_firmware(
         if firmware_path is None:
             firmware_path = os.path.join(
                 get_package_share_directory("leo_fw"),
-                "firmware/leocore_firmware.bin",
+                "data/firmware_binaries/leocore_firmware.bin",
             )
 
         flash_leocore(firmware_path)
@@ -186,5 +188,5 @@ def flash_firmware(
 
     if uros_agent_running:
         write_flush("--> Starting the Micro-ROS Agent.. ")
-        # TODO Start Micro-ROS Agent
+        agent_start()
         print("DONE")
