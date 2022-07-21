@@ -16,7 +16,7 @@
   <node name="rosbridge_server"
     pkg="rosbridge_server"
     exec="rosbridge_websocket">
-    <param name="unregister_timeout" value="86400.0" />
+    <param name="unregister_timeout" value="86400" />
   </node>
 
   <node pkg="rosapi" exec="rosapi_node">
@@ -26,6 +26,7 @@
   </node>
 
   <node pkg="leo_fw" exec="firmware_message_converter">
+    <param name="tf_frame_prefix" value="$(var tf_frame_prefix)" />
     <param from="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
   </node>
 
