@@ -21,10 +21,7 @@ class FirmwareMessageConverter : public rclcpp::Node
 {
 public:
   FirmwareMessageConverter(rclcpp::NodeOptions options)
-  : Node("firmware_message_converter", options
-      .start_parameter_services(false)
-      .start_parameter_event_publisher(false)
-      .use_intra_process_comms(true))
+  : Node("firmware_message_converter", options.use_intra_process_comms(true))
   {
     robot_frame_id_ = declare_parameter("robot_frame_id", robot_frame_id_);
     odom_frame_id_ = declare_parameter("odom_frame_id", odom_frame_id_);
@@ -62,7 +59,7 @@ private:
   {
     nav_msgs::msg::Odometry wheel_odom;
     wheel_odom.header.frame_id = odom_frame_id_;
-    wheel_odom.child_frame_id = robot_frame_id_;
+    wheel_odom.child_frame_id = tf_frame_prefix_ + robot_frame_id_;
     wheel_odom.header.stamp = msg->stamp;
     wheel_odom.twist.twist.linear.x = msg->velocity_lin;
     wheel_odom.twist.twist.angular.z = msg->velocity_ang;
@@ -82,7 +79,7 @@ private:
   void imu_callback(const leo_msgs::msg::Imu::SharedPtr msg) const
   {
     sensor_msgs::msg::Imu imu;
-    imu.header.frame_id = imu_frame_id_;
+    imu.header.frame_id = tf_frame_prefix_ + imu_frame_id_;
     imu.header.stamp = msg->stamp;
     imu.angular_velocity.x = msg->gyro_x;
     imu.angular_velocity.y = msg->gyro_y;
