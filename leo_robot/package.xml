@@ -10,8 +10,8 @@
   <license>MIT</license>
   
   <url type="website">http://wiki.ros.org/leo_robot</url>
-  <url type="bugtracker">https://github.com/LeoRover/leo_robot/issues</url>
-  <url type="repository">https://github.com/LeoRover/leo_robot</url>
+  <url type="bugtracker">https://github.com/LeoRover/leo_robot-ros2/issues</url>
+  <url type="repository">https://github.com/LeoRover/leo_robot-ros2</url>
 
   <author email="blazej@fictionlab.pl">Błażej Sowa</author>
 
