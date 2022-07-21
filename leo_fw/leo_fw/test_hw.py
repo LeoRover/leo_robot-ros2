@@ -336,9 +336,9 @@ def test_hw(
         #####################################################
 
         if board_type == BoardType.CORE2:
-            print(f"Board type: Core2ROS")
+            print("Board type: Husarion CORE2")
         elif board_type == BoardType.LEOCORE:
-            print(f"Board type: LeoCore")
+            print("Board type: LeoCore")
         print(f"Firmware version: {current_firmware_version}")
 
         #####################################################

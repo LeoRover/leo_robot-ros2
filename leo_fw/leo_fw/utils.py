@@ -72,11 +72,11 @@ def prompt_options(options: list[tuple[str, Any]], default: int = 1) -> str:
         if 0 <= selected_nr < len(options):
             _, selected = options[selected_nr]
             return selected
-        print(f"Please select a valid option")
+        print("Please select a valid option")
 
 
 def parse_yaml(file_path: str):
-    with open(file_path, "r") as stream:
+    with open(file_path, "r", encoding="utf-8") as stream:
         try:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
