@@ -1,4 +1,5 @@
 import os
+import time
 import subprocess
 
 from typing import Optional
@@ -66,7 +67,10 @@ def flash_firmware(
     if uros_agent_running:
         write_flush("--> Checking if firmware node is active.. ")
 
-        if node.get_namespace() + "firmware" in node.get_node_names():
+        # Wait for node discovery
+        time.sleep(1)
+
+        if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
             print("YES")
             firmware_node_active = True
         else:
