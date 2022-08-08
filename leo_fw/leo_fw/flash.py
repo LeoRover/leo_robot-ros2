@@ -11,35 +11,17 @@ from .board import BoardType, determine_board, check_firmware_version
 from .agent import agent_check_active, agent_start, agent_stop
 
 
-def flash_core2(bootloader_path: str, firmware_path: str):
-    print("--> Disabling read/write protections and erasing flash")
-    subprocess.check_call("stm32loader -c rpi -f F4 -R -u -W", shell=True)
+def write_binary(binary_path: str, reset_high=False):
+    base_cmd = f"stm32loader -c rpi -f F4 {'-R' if reset_high else ''}"
 
-    print("--> Erasing flash")
-    subprocess.check_call("stm32loader -c rpi -f F4 -R -e", shell=True)
-
-    print("--> Flashing bootloader")
-    subprocess.check_call(
-        f"stm32loader -c rpi -f F4 -R -w -v {bootloader_path}", shell=True
-    )
-
-    print("--> Flashing firmware")
-    subprocess.check_call(
-        f"stm32loader -c rpi -f F4 -R -a 0x08010000 -w -v {firmware_path}", shell=True
-    )
-
-    print("--> Flashing completed!")
-
-
-def flash_leocore(firmware_path: str):
     print("--> Disabling flash read/write protections")
-    subprocess.check_call("stm32loader -c rpi -f F4 -u -W", shell=True)
+    subprocess.check_call(f"{base_cmd} -uW", shell=True)
 
     print("--> Erasing flash")
-    subprocess.check_call("stm32loader -c rpi -f F4 -e", shell=True)
+    subprocess.check_call(f"{base_cmd} -e", shell=True)
 
     print("--> Flashing firmware")
-    subprocess.check_call(f"stm32loader -c rpi -f F4 -w -v {firmware_path}", shell=True)
+    subprocess.check_call(f"{base_cmd} -wv {binary_path}", shell=True)
 
     print("--> Flashing completed!")
 
@@ -162,18 +144,13 @@ def flash_firmware(
     #####################################################
 
     if board_type == BoardType.CORE2:
-        bootloader_path = os.path.join(
-            get_package_share_directory("leo_fw"),
-            "firmware/bootloader_1_0_0_core2.bin",
-        )
-
         if firmware_path is None:
             firmware_path = os.path.join(
                 get_package_share_directory("leo_fw"),
                 "data/firmware_binaries/core2_firmware.bin",
             )
 
-        flash_core2(bootloader_path, firmware_path)
+        write_binary(firmware_path, reset_high=True)
 
     elif board_type == BoardType.LEOCORE:
         if firmware_path is None:
@@ -182,7 +159,7 @@ def flash_firmware(
                 "data/firmware_binaries/leocore_firmware.bin",
             )
 
-        flash_leocore(firmware_path)
+        write_binary(firmware_path, reset_high=False)
 
     #####################################################
 
