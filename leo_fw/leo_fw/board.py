@@ -21,19 +21,26 @@ def determine_board(node: rclpy.Node) -> Optional[BoardType]:
         "firmware", node.get_namespace()
     )
 
-    print(services)
-
     board_type = None
 
-    if node.get_namespace() + "firmware/get_board_type" in services[:, 0]:
+    if node.get_namespace() + "firmware/get_board_type" in [
+        service[0] for service in services
+    ]:
         get_board_type = node.create_client(Trigger, "firmware/get_board_type")
-        type_str = get_board_type.call(Trigger.Request()).result().message
-        if type_str == str(BoardType.CORE2):
-            board_type = BoardType.CORE2
-        elif type_str == str(BoardType.LEOCORE):
-            board_type = BoardType.LEOCORE
+        future = get_board_type.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(node, future)
+        if future.done():
+            try:
+                result = future.result()
+            except Exception as e:
+                pass
+            else:
+                type_str = result.message
+                if type_str == str(BoardType.CORE2):
+                    board_type = BoardType.CORE2
+                elif type_str == str(BoardType.LEOCORE):
+                    board_type = BoardType.LEOCORE
         get_board_type.destroy()
-
     return board_type
 
 
@@ -44,11 +51,21 @@ def check_firmware_version(node: rclpy.Node) -> str:
 
     firmware_version = "<unknown>"
 
-    if node.get_namepace() + "firmware/get_firmware_version" in services[:, 0]:
+    if node.get_namespace() + "firmware/get_firmware_version" in [
+        service[0] for service in services
+    ]:
         get_firmware_version = node.create_client(
             Trigger, "firmware/get_firmware_version"
         )
-        firmware_version = get_firmware_version.call(Trigger.Request()).result().message
+        future = get_firmware_version.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(node, future)
+        if future.done():
+            try:
+                result = future.result()
+            except Exception as e:
+                pass
+            else:
+                firmware_version = result.message
         get_firmware_version.destroy()
 
     return firmware_version
