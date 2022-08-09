@@ -150,7 +150,7 @@ class HardwareTester(Node):
         self.cmd_pwmrl_pub.publish(Float32(data=0.0))
         self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
-    def check_encoder(self) -> None:
+    def check_encoder(self) -> bool:
         is_error = [False] * 4
 
         if self.is_wheel_loaded:
@@ -188,7 +188,7 @@ class HardwareTester(Node):
         print(CSIColor.OKGREEN + "PASSED" + CSIColor.ENDC)
         return True
 
-    def check_torque(self) -> None:
+    def check_torque(self) -> bool:
         is_error = [False] * 4
 
         if self.is_wheel_loaded:

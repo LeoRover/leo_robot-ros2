@@ -22,10 +22,12 @@ from __future__ import annotations
 
 import sys
 from enum import Enum
-from typing import Any
+from typing import Any, TypeVar
 
 import yaml
 from whichcraft import which
+
+T = TypeVar("T")
 
 
 class CSIColor(str, Enum):
@@ -79,7 +81,7 @@ def query_yes_no(question: str, default: str = "yes") -> bool:
         print("Please respond with 'yes' or 'no' " "(or 'y' or 'n').")
 
 
-def prompt_options(options: list[tuple[str, Any]], default: int = 1) -> str:
+def prompt_options(options: list[tuple[str, T]], default: int = 1) -> T:
     for i, (name, _) in enumerate(options):
         print(f"{i+1}) {name}")
 
