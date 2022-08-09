@@ -25,7 +25,7 @@ jobs:
       - name: Source tests
         uses: 'ros-industrial/industrial_ci@master'
         env:
-          UPSTREAM_WORKSPACE: 'github:LeoRover/leo_common#master'
+          UPSTREAM_WORKSPACE: 'github:LeoRover/leo_common-ros2#humble'
           CLANG_TIDY: true
           PYLINT_CHECK: true
           PYLINT_ARGS: '--rcfile=src/leo_robot-ros2/.pylintrc'
