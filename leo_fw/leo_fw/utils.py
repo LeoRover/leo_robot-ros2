@@ -24,7 +24,7 @@ import sys
 from enum import Enum
 from typing import Any, TypeVar
 
-import yaml
+import yaml  # type: ignore
 from whichcraft import which
 
 T = TypeVar("T")
