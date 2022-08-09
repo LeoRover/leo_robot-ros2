@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  industrial_ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ROS_DISTRO: [humble]
+        ROS_REPO: [testing, main]
+    env: 
+      ROS_DISTRO: ${{ matrix.ROS_DISTRO }}
+      ROS_REPO: ${{ matrix.ROS_REPO }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v1
+      - name: Source tests
+        uses: 'ros-industrial/industrial_ci@master'
+        env:
+          UPSTREAM_WORKSPACE: 'github:LeoRover/leo_common#master'
+          CLANG_TIDY: true
+          PYLINT_CHECK: true
+          PYLINT_ARGS: '--rcfile=src/leo_robot-ros2/.pylintrc'
+      - name: clang-format check
+        uses: 'ros-industrial/industrial_ci@master'
+        env:
+          CLANG_FORMAT_CHECK: 'file'
+      - name: black check
+        uses: 'ros-industrial/industrial_ci@master'
+        env:
+          BLACK_CHECK: true
