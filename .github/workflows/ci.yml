@@ -11,7 +11,7 @@ on:
 
 jobs:
   industrial_ci:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ROS_DISTRO: [humble]
@@ -28,11 +28,32 @@ jobs:
           UPSTREAM_WORKSPACE: 'github:LeoRover/leo_common-ros2#humble'
           PYLINT_CHECK: true
           PYLINT_ARGS: '--rcfile=src/leo_robot-ros2/.pylintrc'
-      - name: clang-format check
-        uses: 'ros-industrial/industrial_ci@master'
-        env:
-          CLANG_FORMAT_CHECK: 'file'
-      - name: black check
-        uses: 'ros-industrial/industrial_ci@master'
-        env:
-          BLACK_CHECK: true
+
+  ament_lint:
+    name: ament_${{ matrix.linter }}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+          linter: [cppcheck, copyright, lint_cmake, mypy]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ros-tooling/setup-ros@v0.3
+      with:
+        required-ros-distributions: humble
+    - uses: ros-tooling/action-ros-lint@v0.1
+      with:
+        distribution: rolling
+        linter: ${{ matrix.linter }}
+        package-name:
+          leo_bringup
+          leo_fw
+          leo_robot
+
+  black_check:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Check formatting
+        uses: psf/black@stable
