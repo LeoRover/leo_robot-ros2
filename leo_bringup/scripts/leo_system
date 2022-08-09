@@ -32,13 +32,16 @@ class LeoSystem(Node):
     def publish_namespace(self):
         latching_qos = QoSProfile(
             depth=1,
-            durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
         )
         namespace_pub = self.create_publisher(
             String, "robot_namespace", qos_profile=latching_qos
         )
         namespace = self.get_namespace()
-        namespace_pub.publish(namespace)
+        print(namespace)
+        msg = String()
+        msg.data = namespace
+        namespace_pub.publish(msg)
 
 
 if __name__ == "__main__":
