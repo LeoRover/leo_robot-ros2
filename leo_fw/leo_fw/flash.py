@@ -5,6 +5,7 @@ import subprocess
 from typing import Optional
 
 import rclpy
+from rclpy.node import HIDDEN_NODE_PREFIX
 from ament_index_python.packages import get_package_share_directory
 
 from .utils import is_tool, write_flush, query_yes_no, prompt_options
@@ -49,7 +50,9 @@ def flash_firmware(
 
     write_flush("--> Initializing ROS node.. ")
     rclpy.init()
-    node = rclpy.create_node("firmware_flasher")
+    node = rclpy.create_node(
+        HIDDEN_NODE_PREFIX + "firmware_flasher", start_parameter_services=False
+    )
     print("DONE")
 
     #####################################################
