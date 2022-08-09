@@ -37,4 +37,8 @@
     <param from="$(find-pkg-share leo_bringup)/config/v4l2_camera.yaml" />
   </node>
 
+  <node name="leo_system"
+        pkg="leo_bringup"
+        type="leo_system"/>
+
 </launch>
