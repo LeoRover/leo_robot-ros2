@@ -1,5 +1,4 @@
 import os
-import time
 import subprocess
 
 from typing import Optional
@@ -71,7 +70,16 @@ def flash_firmware(
         write_flush("--> Checking if firmware node is active.. ")
 
         # Wait for node discovery
-        time.sleep(1)
+        timeout_reached = False
+
+        def timer_callback():
+            nonlocal timeout_reached
+            timeout_reached = True
+
+        timer = node.create_timer(1.0, timer_callback)
+        while not timeout_reached:
+            rclpy.spin_once(node)
+        node.destroy_timer(timer)
 
         if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
             print("YES")
