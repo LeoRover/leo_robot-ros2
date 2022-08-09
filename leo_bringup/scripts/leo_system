@@ -38,7 +38,6 @@ class LeoSystem(Node):
             String, "robot_namespace", qos_profile=latching_qos
         )
         namespace = self.get_namespace()
-        print(namespace)
         msg = String()
         msg.data = namespace
         namespace_pub.publish(msg)
