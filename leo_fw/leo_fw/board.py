@@ -29,17 +29,13 @@ def determine_board(node: rclpy.Node) -> Optional[BoardType]:
         get_board_type = node.create_client(Trigger, "firmware/get_board_type")
         future = get_board_type.call_async(Trigger.Request())
         rclpy.spin_until_future_complete(node, future)
-        if future.done():
-            try:
-                result = future.result()
-            except Exception as e:
-                pass
-            else:
-                type_str = result.message
-                if type_str == str(BoardType.CORE2):
-                    board_type = BoardType.CORE2
-                elif type_str == str(BoardType.LEOCORE):
-                    board_type = BoardType.LEOCORE
+        if future.done() and not future.exception():
+            result = future.result()
+            type_str = result.message
+            if type_str == str(BoardType.CORE2):
+                board_type = BoardType.CORE2
+            elif type_str == str(BoardType.LEOCORE):
+                board_type = BoardType.LEOCORE
         get_board_type.destroy()
     return board_type
 
@@ -59,13 +55,9 @@ def check_firmware_version(node: rclpy.Node) -> str:
         )
         future = get_firmware_version.call_async(Trigger.Request())
         rclpy.spin_until_future_complete(node, future)
-        if future.done():
-            try:
-                result = future.result()
-            except Exception as e:
-                pass
-            else:
-                firmware_version = result.message
+        if future.done() and not future.exception():
+            result = future.result()
+            firmware_version = result.message
         get_firmware_version.destroy()
 
     return firmware_version
