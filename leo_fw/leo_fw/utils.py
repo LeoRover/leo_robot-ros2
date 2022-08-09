@@ -22,11 +22,12 @@ from __future__ import annotations
 
 import sys
 from enum import Enum
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import yaml  # type: ignore
 from whichcraft import which
 
+# pylint: disable=invalid-name
 T = TypeVar("T")
 
 
