@@ -32,6 +32,8 @@ jobs:
   ament_lint:
     name: ament_${{ matrix.linter }}
     runs-on: ubuntu-20.04
+    container:
+      image: ubuntu:jammy
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +45,7 @@ jobs:
         required-ros-distributions: humble
     - uses: ros-tooling/action-ros-lint@v0.1
       with:
-        distribution: rolling
+        distribution: humble
         linter: ${{ matrix.linter }}
         package-name:
           leo_bringup
