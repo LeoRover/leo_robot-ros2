@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        linter: [copyright, lint_cmake, mypy, uncrustify]
+        linter: [copyright, lint_cmake, mypy, uncrustify, xmllint]
     steps:
       - uses: actions/checkout@v3
       - uses: ros-tooling/setup-ros@v0.3
