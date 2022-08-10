@@ -11,7 +11,7 @@ install(
 )
 
 install(
-  PROGRAMS 
+  PROGRAMS
     scripts/leo_system
   DESTINATION lib/${PROJECT_NAME}
 )
