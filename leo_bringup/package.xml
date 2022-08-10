@@ -16,6 +16,7 @@
   <url type="repository">https://github.com/LeoRover/leo_robot-ros2</url>
 
   <author email="blazej@fictionlab.pl">Błażej Sowa</author>
+  <author email="aleks@fictionlab.pl">Aleksander Szymański</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
