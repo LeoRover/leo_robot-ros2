@@ -13,10 +13,10 @@ class LeoSystem(Node):
     def __init__(self):
         super().__init__("leo_system")
         self.reboot_sub = self.create_subscription(
-            Empty, "system/shutdown", self.reboot_callback, 1
+            Empty, "system/shutdown", self.shutdown_callback, 1
         )
         self.shutdown_sub = self.create_subscription(
-            Empty, "system/reboot", self.shutdown_callback, 1
+            Empty, "system/reboot", self.reboot_callback, 1
         )
         self.publish_namespace()
         self.get_logger().info("Leo system node started!")
@@ -27,7 +27,7 @@ class LeoSystem(Node):
 
     def shutdown_callback(self, data):
         self.get_logger().info("Shutdown command invoked")
-        os.system("systemctl shutdown")
+        os.system("systemctl poweroff")
 
     def publish_namespace(self):
         latching_qos = QoSProfile(
