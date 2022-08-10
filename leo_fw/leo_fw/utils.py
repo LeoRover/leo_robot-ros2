@@ -1,11 +1,34 @@
+# Copyright 2022 Kell Ideas sp. z o.o.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 from __future__ import annotations
 
 import sys
 from enum import Enum
-from typing import Any
+from typing import TypeVar
 
-import yaml
+import yaml  # type: ignore
 from whichcraft import which
+
+# pylint: disable=invalid-name
+T = TypeVar("T")
 
 
 class CSIColor(str, Enum):
@@ -59,7 +82,7 @@ def query_yes_no(question: str, default: str = "yes") -> bool:
         print("Please respond with 'yes' or 'no' " "(or 'y' or 'n').")
 
 
-def prompt_options(options: list[tuple[str, Any]], default: int = 1) -> str:
+def prompt_options(options: list[tuple[str, T]], default: int = 1) -> T:
     for i, (name, _) in enumerate(options):
         print(f"{i+1}) {name}")
 
