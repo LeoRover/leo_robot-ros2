@@ -50,6 +50,8 @@ public:
   {
     calib_file_path = get_calib_path();
     load_yaml_bias();
+    set_imu_calibration_service = node->create_service<leo_msgs::srv::SetImuCalibration>("set_imu_calibration", &set_imu_calibration_callback);
+
     
     robot_frame_id_ = declare_parameter("robot_frame_id", robot_frame_id_);
     odom_frame_id_ = declare_parameter("odom_frame_id", odom_frame_id_);
@@ -138,7 +140,6 @@ private:
     fout << node;
   
     response->success = true;
-    return true;
   }
 
   void load_yaml_bias() {
@@ -277,6 +278,9 @@ private:
   rclcpp::Subscription<leo_msgs::msg::WheelStates>::SharedPtr wheel_states_sub_;
   rclcpp::Subscription<leo_msgs::msg::WheelOdom>::SharedPtr wheel_odom_sub_;
   rclcpp::Subscription<leo_msgs::msg::Imu>::SharedPtr imu_sub_;
+
+  // Service
+  rclcpp::Service<leo_msgs::srv::SetImuCalibration>::SharedPtr set_imu_calibration_service;
 };
 
 }  // namespace leo_fw
