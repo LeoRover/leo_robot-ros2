@@ -8,6 +8,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(leo_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 add_library(leo_fw SHARED
   src/firmware_message_converter.cpp
@@ -39,6 +40,7 @@ install(
     scripts/flash
     scripts/update
     scripts/test_hw
+    scripts/calibrate_imu
   DESTINATION lib/${PROJECT_NAME}
 )
 
