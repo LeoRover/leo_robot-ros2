@@ -50,7 +50,7 @@ public:
   {
     calib_file_path = get_calib_path();
     load_yaml_bias();
-    set_imu_calibration_service = node->create_service<leo_msgs::srv::SetImuCalibration>("set_imu_calibration", &set_imu_calibration_callback);
+    set_imu_calibration_service = create_service<leo_msgs::srv::SetImuCalibration>("set_imu_calibration", std::bind(&set_imu_calibration_callback, this, std::placeholders::_1, std::placeholders::_2));
 
     
     robot_frame_id_ = declare_parameter("robot_frame_id", robot_frame_id_);
