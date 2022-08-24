@@ -127,17 +127,17 @@ private:
   }
 
   void set_imu_calibration_callback(const std::shared_ptr<leo_msgs::srv::SetImuCalibration::Request> request, std::shared_ptr<leo_msgs::srv::SetImuCalibration::Response> response){
-    RCLCPP_INFO(get_logger(), "SetImuCalibration request for: [ %f, %f, %f]", request.gyro_bias_x,
-               requset.gyro_bias_y, request.gyro_bias_z);
+    RCLCPP_INFO(get_logger(), "SetImuCalibration request for: [ %f, %f, %f]", request->gyro_bias_x,
+               request->gyro_bias_y, request->gyro_bias_z);
 
     YAML::Node node = YAML::LoadFile(calib_file_path);
-    node["gyro_bias_x"] = imu_calibration_bias[0] = request.gyro_bias_x;
-    node["gyro_bias_y"] = imu_calibration_bias[1] = request.gyro_bias_y;
-    node["gyro_bias_z"] = imu_calibration_bias[2] = request.gyro_bias_z;
+    node["gyro_bias_x"] = imu_calibration_bias[0] = request->gyro_bias_x;
+    node["gyro_bias_y"] = imu_calibration_bias[1] = request->gyro_bias_y;
+    node["gyro_bias_z"] = imu_calibration_bias[2] = request->gyro_bias_z;
     std::ofstream fout(calib_file_path);
     fout << node;
   
-    res.success = true;
+    response->success = true;
     return true;
   }
 
