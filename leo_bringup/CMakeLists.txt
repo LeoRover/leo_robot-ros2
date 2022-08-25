@@ -10,4 +10,12 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(
+  PROGRAMS
+    scripts/leo_system
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+
 ament_package()

@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+import os
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
+from std_msgs.msg import Empty
+from std_msgs.msg import String
+
+
+class LeoSystem(Node):
+    def __init__(self):
+        super().__init__("leo_system")
+        self.reboot_sub = self.create_subscription(
+            Empty, "system/shutdown", self.shutdown_callback, 1
+        )
+        self.shutdown_sub = self.create_subscription(
+            Empty, "system/reboot", self.reboot_callback, 1
+        )
+        self.publish_namespace()
+        self.get_logger().info("Leo system node started!")
+
+    def reboot_callback(self, data):
+        self.get_logger().info("Reboot command invoked")
+        os.system("systemctl reboot")
+
+    def shutdown_callback(self, data):
+        self.get_logger().info("Shutdown command invoked")
+        os.system("systemctl poweroff")
+
+    def publish_namespace(self):
+        latching_qos = QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        namespace_pub = self.create_publisher(
+            String, "robot_namespace", qos_profile=latching_qos
+        )
+        namespace = self.get_namespace()
+        msg = String()
+        msg.data = namespace
+        namespace_pub.publish(msg)
+
+
+if __name__ == "__main__":
+    rclpy.init()
+    leo_system = LeoSystem()
+
+    try:
+        rclpy.spin(leo_system)
+    except KeyboardInterrupt as exception:
+        leo_system.get_logger().info("Got Ctrl+C, shuting down.")
+        leo_system.destroy_node()
+    finally:
+        rclpy.shutdown()
