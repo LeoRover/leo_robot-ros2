@@ -34,7 +34,7 @@ class Calibrator(Node):
 
     def imu_sub_callback(self, data: Imu):
         if self.get_clock().now() >= self.end_time:
-            self.send_bias()
+            #elf.send_bias()
             self.running = False
             self.imu_sub.destroy()
         
@@ -51,8 +51,9 @@ class Calibrator(Node):
 
         self.req.gyro_bias_x, self.req.gyro_bias_y, self.req.gyro_bias_z = bias
         
-        self.future = self.service_client.call_async(self.req)
-        rclpy.spin_until_future_complete(self, self.future)
+        # self.future = self.service_client.call(self.req)
+        # rclpy.spin_until_future_complete(self, self.future)
+        self.service_client.call(self.req)
         
         if not self.future.result():
             self.get_logger().error(f"Failed to set new imu calibration.")
@@ -81,6 +82,7 @@ if __name__ == "__main__":
     while calib.running and rclpy.ok():
         rclpy.spin_once(calib)
     
+    calib.send_bias()
     calib.get_logger().info("Finishing node.")
     calib.destroy_node()
     rclpy.shutdown()
