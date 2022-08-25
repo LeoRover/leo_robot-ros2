@@ -35,9 +35,8 @@ class Calibrator(Node):
     def imu_sub_callback(self, data: Imu):
         if self.get_clock().now() >= self.end_time:
             self.send_bias()
-            self.imu_sub.destroy()
-            self.destroy_node()
             self.running = False
+            self.imu_sub.destroy()
         
         self.data.append([data.gyro_x, data.gyro_y, data.gyro_z])
 
@@ -82,4 +81,6 @@ if __name__ == "__main__":
     while calib.running and rclpy.ok():
         rclpy.spin_once(calib)
     
+    calib.get_logger().info("Finishing node.")
+    calib.destroy_node()
     rclpy.shutdown()
