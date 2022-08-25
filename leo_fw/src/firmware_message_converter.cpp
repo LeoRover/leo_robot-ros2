@@ -140,6 +140,7 @@ private:
     fout << node;
   
     response->success = true;
+    set_imu_calibration_service->send_response(request, response);
   }
 
   void load_yaml_bias() {
