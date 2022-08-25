@@ -56,7 +56,7 @@ class Calibrator(Node):
 
         self.req.gyro_bias_x, self.req.gyro_bias_y, self.req.gyro_bias_z = bias
 
-        self.future = self.service_client.call(self.req)
+        self.future = self.service_client.call_async(self.req)
         rclpy.spin_until_future_complete(self, self.future)
 
         if not self.future.result().success:
