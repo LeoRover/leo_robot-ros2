@@ -167,7 +167,7 @@ private:
       std::ofstream fout(calib_file_path);
       fout << node;
     }
-}
+  }
 
   std::string get_calib_path() {
     std::string ros_home;

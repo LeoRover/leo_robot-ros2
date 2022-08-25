@@ -10,12 +10,17 @@ find_package(nav_msgs REQUIRED)
 find_package(leo_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
+include_directories(
+  ${YAML_CPP_INCLUDE_DIRS}
+)
+
 add_library(leo_fw SHARED
   src/firmware_message_converter.cpp
 )
 target_link_libraries(leo_fw
   rclcpp::rclcpp
   rclcpp_components::component
+  ${YAML_CPP_LIBRARIES}
 )
 ament_target_dependencies(leo_fw
   sensor_msgs
