@@ -42,6 +42,7 @@ class Calibrator(Node):
     def imu_sub_callback(self, data: Imu):
         if self.get_clock().now() >= self.end_time:
             self.running = False
+            self.destroy_subscription(self.imu_sub)
 
         self.data.append([data.gyro_x, data.gyro_y, data.gyro_z])
 
