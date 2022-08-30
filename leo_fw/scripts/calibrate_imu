@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="Calculate imu bias and send it to firmware_message_converter.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     add_arguments(parser)
     args = parser.parse_args()
