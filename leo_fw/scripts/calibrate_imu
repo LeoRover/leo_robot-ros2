@@ -14,7 +14,7 @@ from leo_msgs.msg import Imu
 
 class Calibrator(Node):
     def __init__(self, time=2.0):
-        super().__init__("minimal_client_async")
+        super().__init__("calibrate_imu")
 
         self.service_client = self.create_client(
             SetImuCalibration, "set_imu_calibration"
@@ -22,8 +22,6 @@ class Calibrator(Node):
 
         while not self.service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("service not available, waiting again...")
-
-        self.req = SetImuCalibration.Request()
 
         self.data = []
         self.end_time = self.get_clock().now() + rclpy.duration.Duration(seconds=time)
@@ -55,9 +53,10 @@ class Calibrator(Node):
 
         self.get_logger().info(f"Calculated bias: {bias}")
 
-        self.req.gyro_bias_x, self.req.gyro_bias_y, self.req.gyro_bias_z = bias
+        req = SetImuCalibration.Request()
+        req.gyro_bias_x, req.gyro_bias_y, req.gyro_bias_z = bias
 
-        self.future = self.service_client.call_async(self.req)
+        self.future = self.service_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
 
         if not self.future.result().success:
@@ -70,7 +69,7 @@ def add_arguments(parser: argparse.ArgumentParser):
         default=10.0,
         type=float,
         nargs="?",
-        help="The duration for which the IMU data is collected.",
+        help="The duration in seconds, for which the IMU data is collected.",
     )
 
 
@@ -78,7 +77,8 @@ if __name__ == "__main__":
     rclpy.init()
 
     parser = argparse.ArgumentParser(
-        description="Calculate imu bias and send it to firmware_message_converter."
+        description="Calculate imu bias and send it to firmware_message_converter.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     add_arguments(parser)
     args = parser.parse_args()
