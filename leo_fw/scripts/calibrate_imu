@@ -31,11 +31,14 @@ class Calibrator(Node):
             durability=QoSDurabilityPolicy.VOLATILE,
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
         )
+
+        self.running = True
+
         self.imu_sub = self.create_subscription(
             Imu, "firmware/imu", self.imu_sub_callback, qos
         )
 
-        self.running = True
+        self.get_logger().info(f"Collecting IMU measurements for {time} seconds...")
 
     def imu_sub_callback(self, data: Imu):
         if self.get_clock().now() >= self.end_time:
