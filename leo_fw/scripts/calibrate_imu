@@ -72,7 +72,7 @@ def add_arguments(parser: argparse.ArgumentParser):
         default=10.0,
         type=float,
         nargs="?",
-        help="The duration in seconds, for which the IMU data is collected.",
+        help="The duration in seconds for which the IMU data is collected.",
     )
 
 
