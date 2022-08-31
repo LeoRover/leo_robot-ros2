@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+
+import argparse
+from calendar import day_abbr
+
+import numpy as np
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+from leo_msgs.srv import SetImuCalibration
+from leo_msgs.msg import Imu
+
+
+class Calibrator(Node):
+    def __init__(self, time=2.0):
+        super().__init__("calibrate_imu")
+
+        self.service_client = self.create_client(
+            SetImuCalibration, "set_imu_calibration"
+        )
+
+        while not self.service_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("service not available, waiting again...")
+
+        self.data = []
+        self.end_time = self.get_clock().now() + rclpy.duration.Duration(seconds=time)
+
+        qos = QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.VOLATILE,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+        )
+
+        self.running = True
+
+        self.imu_sub = self.create_subscription(
+            Imu, "firmware/imu", self.imu_sub_callback, qos
+        )
+
+        self.get_logger().info(f"Collecting IMU measurements for {time} seconds...")
+
+    def imu_sub_callback(self, data: Imu):
+        if self.get_clock().now() >= self.end_time:
+            self.running = False
+            self.destroy_subscription(self.imu_sub)
+
+        self.data.append([data.gyro_x, data.gyro_y, data.gyro_z])
+
+    def send_bias(self):
+        self.get_logger().info(f"Calculating bias from {len(self.data)} samples.")
+
+        matrix = np.matrix(self.data)
+        bias = matrix.mean(0) * -1.0
+        bias = bias.tolist()[0]
+
+        self.get_logger().info(f"Calculated bias: {bias}")
+
+        req = SetImuCalibration.Request()
+        req.gyro_bias_x, req.gyro_bias_y, req.gyro_bias_z = bias
+
+        self.future = self.service_client.call_async(req)
+        rclpy.spin_until_future_complete(self, self.future)
+
+        if not self.future.result().success:
+            self.get_logger().error(f"Failed to set new imu calibration.")
+
+
+def add_arguments(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "duration",
+        default=10.0,
+        type=float,
+        nargs="?",
+        help="The duration in seconds for which the IMU data is collected.",
+    )
+
+
+if __name__ == "__main__":
+    rclpy.init()
+
+    parser = argparse.ArgumentParser(
+        description="Calculate imu bias and send it to firmware_message_converter.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    add_arguments(parser)
+    args = parser.parse_args()
+
+    calib = Calibrator(args.duration)
+
+    while calib.running and rclpy.ok():
+        rclpy.spin_once(calib)
+
+    calib.send_bias()
+    calib.get_logger().info("Finishing node.")
+    calib.destroy_node()
+    rclpy.shutdown()
