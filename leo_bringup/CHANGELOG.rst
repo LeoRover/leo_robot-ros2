@@ -2,8 +2,8 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2022-09-21)
+------------------
 * Add image_proc to dependencies
 * Run v4l2_camera node in container together with image_proc nodes
 * Add camera calibration file

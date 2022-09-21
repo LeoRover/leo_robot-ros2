@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2022-09-21)
+------------------
 * Fix test_hw script
 * Update leocore firmware to version 1.0.1
 * Contributors: Błażej Sowa
