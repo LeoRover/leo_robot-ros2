@@ -27,6 +27,7 @@
   <exec_depend>xacro</exec_depend>
   <exec_depend>rosapi</exec_depend>
   <exec_depend>v4l2_camera</exec_depend>
+  <exec_depend>image_proc</exec_depend>
 
   <exec_depend>leo_description</exec_depend>
   <exec_depend>leo_fw</exec_depend>
