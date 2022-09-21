@@ -1,4 +1,4 @@
-name: CI
+name: CI-Humble
 
 on:
   workflow_dispatch:
@@ -9,15 +9,16 @@ on:
     branches:
       - humble
 
+env:
+ ROS_DISTRO: humble
+
 jobs:
   industrial_ci:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ROS_DISTRO: [humble]
         ROS_REPO: [testing, main]
     env:
-      ROS_DISTRO: ${{ matrix.ROS_DISTRO }}
       ROS_REPO: ${{ matrix.ROS_REPO }}
     steps:
       - name: Checkout repo
@@ -33,16 +34,13 @@ jobs:
     name: ament_${{ matrix.linter }}
     runs-on: ubuntu-20.04
     container:
-      image: ubuntu:jammy
+      image: ros:humble
     strategy:
       fail-fast: false
       matrix:
         linter: [copyright, lint_cmake, mypy, uncrustify, xmllint]
     steps:
       - uses: actions/checkout@v3
-      - uses: ros-tooling/setup-ros@v0.3
-        with:
-          required-ros-distributions: humble
       - uses: ros-tooling/action-ros-lint@v0.1
         with:
           distribution: humble
