@@ -25,6 +25,7 @@ from enum import Enum
 import rclpy
 from rclpy.node import Node
 from rclpy.task import Future
+from rclpy.qos import qos_profile_sensor_data
 from ament_index_python.packages import get_package_share_directory
 
 from leo_msgs.msg import Imu, WheelStates
@@ -66,9 +67,7 @@ class HardwareTester(Node):
 
         ### Publishers
 
-        self.cmd_vel_pub = self.create_publisher(
-            Twist, "firmware/wheel_FL/cmd_pwm_duty", 1
-        )
+        self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.cmd_pwmfl_pub = self.create_publisher(
             Float32, "firmware/wheel_FL/cmd_pwm_duty", 1
         )
@@ -97,13 +96,16 @@ class HardwareTester(Node):
         ### Subscriptions
 
         self.battery_sub = self.create_subscription(
-            Float32, "firmware/battery", self.battery_callback, 1
+            Float32, "firmware/battery", self.battery_callback, qos_profile_sensor_data
         )
         self.wheel_sub = self.create_subscription(
-            WheelStates, "firmware/wheel_states", self.wheel_callback, 1
+            WheelStates,
+            "firmware/wheel_states",
+            self.wheel_callback,
+            qos_profile_sensor_data,
         )
         self.imu_sub = self.create_subscription(
-            Imu, "firmware/imu", self.imu_callback, 1
+            Imu, "firmware/imu", self.imu_callback, qos_profile_sensor_data
         )
 
     def battery_callback(self, data: Float32) -> None:
@@ -313,7 +315,22 @@ def test_hw(
     try:
         write_flush("--> Checking if firmware node is active.. ")
 
-        if tester.get_namespace() + "firmware" in tester.get_node_names():
+        # Wait for node discovery
+        timeout_reached = False
+
+        def timer_callback():
+            nonlocal timeout_reached
+            timeout_reached = True
+
+        timer = tester.create_timer(1.0, timer_callback)
+        while not timeout_reached:
+            rclpy.spin_once(tester)
+        tester.destroy_timer(timer)
+
+        if (
+            "firmware",
+            tester.get_namespace(),
+        ) in tester.get_node_names_and_namespaces():
             print("YES")
         else:
             print("NO")
@@ -328,7 +345,6 @@ def test_hw(
 
         write_flush("--> Trying to determine board type.. ")
 
-        board_type = None
         board_type = determine_board(tester)
 
         if board_type is not None:
