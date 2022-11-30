@@ -2,6 +2,11 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix namespace retrieval in leo_system script
+* Contributors: Błażej Sowa
+
 1.2.0 (2022-09-21)
 ------------------
 * Add image_proc to dependencies
