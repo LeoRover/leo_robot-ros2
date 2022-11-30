@@ -37,7 +37,11 @@ class LeoSystem(Node):
         namespace_pub = self.create_publisher(
             String, "robot_namespace", qos_profile=latching_qos
         )
+        
         namespace = self.get_namespace()
+        if not namespace.endswith('/'):
+            namespace += '/'
+
         msg = String()
         msg.data = namespace
         namespace_pub.publish(msg)
