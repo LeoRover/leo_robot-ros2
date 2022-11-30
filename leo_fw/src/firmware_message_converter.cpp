@@ -69,10 +69,10 @@ public:
       "imu_linear_acceleration_covariance_diagonal", imu_linear_acceleration_covariance_diagonal_);
     tf_frame_prefix_ = declare_parameter("tf_frame_prefix", tf_frame_prefix_);
 
-    std::string node_namespace = get_namespace();
-    wheel_states_topic_ = node_namespace + "firmware/wheel_states";
-    wheel_odom_topic_ = node_namespace + "firmware/wheel_odom";
-    imu_topic_ = node_namespace + "firmware/imu";
+    auto node_topics = get_node_topics_interface();
+    wheel_states_topic_ = node_topics->resolve_topic_name("firmware/wheel_states");
+    wheel_odom_topic_ = node_topics->resolve_topic_name("firmware/wheel_odom");
+    imu_topic_ = node_topics->resolve_topic_name("firmware/imu");
 
     timer_ = create_wall_timer(500ms, std::bind(&FirmwareMessageConverter::timer_callback, this));
   }
