@@ -18,12 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from typing import Optional
+
 import dbus
 
 AGENT_UNIT_NAME = "uros-agent.service"
 
 
-def _get_unit_interfaces() -> tuple[dbus.Interface, dbus.Interface]:
+def _get_unit_interfaces() -> Optional[tuple[dbus.Interface, dbus.Interface]]:
     bus = dbus.SessionBus()
     manager_proxy = bus.get_object(
         "org.freedesktop.systemd1", "/org/freedesktop/systemd1"
@@ -31,7 +33,12 @@ def _get_unit_interfaces() -> tuple[dbus.Interface, dbus.Interface]:
     manager_interface = dbus.Interface(
         manager_proxy, "org.freedesktop.systemd1.Manager"
     )
-    unit_path = manager_interface.GetUnit(AGENT_UNIT_NAME)
+
+    try:
+        unit_path = manager_interface.GetUnit(AGENT_UNIT_NAME)
+    except dbus.exceptions.DBusException:
+        return None
+
     unit_proxy = bus.get_object("org.freedesktop.systemd1", unit_path)
     unit_interface = dbus.Interface(unit_proxy, "org.freedesktop.systemd1.Unit")
     unit_properties_interface = dbus.Interface(
@@ -41,18 +48,26 @@ def _get_unit_interfaces() -> tuple[dbus.Interface, dbus.Interface]:
 
 
 def agent_check_active() -> bool:
-    _, unit_properties_interface = _get_unit_interfaces()
+    interfaces = _get_unit_interfaces()
+    if interfaces is None:
+        return False
+
+    _, unit_properties_interface = interfaces
     state: dbus.String = unit_properties_interface.Get(
         "org.freedesktop.systemd1.Unit", "ActiveState"
     )
     return state == "active"
 
 
-def agent_start():
-    unit_interface, _ = _get_unit_interfaces()
-    unit_interface.Start("fail")
+def agent_start() -> None:
+    interfaces = _get_unit_interfaces()
+    if interfaces is not None:
+        unit_interface, _ = interfaces
+        unit_interface.Start("fail")
 
 
-def agent_stop():
-    unit_interface, _ = _get_unit_interfaces()
-    unit_interface.Stop("fail")
+def agent_stop() -> None:
+    interfaces = _get_unit_interfaces()
+    if interfaces is not None:
+        unit_interface, _ = interfaces
+        unit_interface.Stop("fail")
