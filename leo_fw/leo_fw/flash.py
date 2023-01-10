@@ -77,14 +77,14 @@ def flash_firmware(
 
     #####################################################
 
-    if uros_agent_running and (board_type == None or check_version):
+    if uros_agent_running and (board_type is None or check_version):
         write_flush("--> Initializing ROS node.. ")
         node = DirectNode(Namespace(node_name_suffix="firmware_flasher", spin_time=3.0))
         print("DONE")
 
     #####################################################
 
-    if uros_agent_running and (board_type == None or check_version):
+    if uros_agent_running and (board_type is None or check_version):
         write_flush("--> Checking if firmware node is active.. ")
 
         if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
