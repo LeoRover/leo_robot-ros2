@@ -21,11 +21,12 @@
 import os
 import time
 from enum import Enum
+from argparse import Namespace
 
 import rclpy
-from rclpy.node import Node
 from rclpy.task import Future
 from rclpy.qos import qos_profile_sensor_data
+from ros2cli.node.direct import DirectNode
 from ament_index_python.packages import get_package_share_directory
 
 from leo_msgs.msg import Imu, WheelStates
@@ -48,7 +49,7 @@ class TestMode(Enum):
         return self.value
 
 
-class HardwareTester(Node):
+class HardwareTester:
 
     is_new_imu_data = False
     is_new_wheel_data = False
@@ -59,54 +60,58 @@ class HardwareTester(Node):
     wheel_data = WheelStates()
     battery_data = Float32()
 
-    def __init__(self):
-        super().__init__("hardware_tester")
+    def __init__(self, node: rclpy.node.Node):
         self.path = os.path.join(
             get_package_share_directory("leo_fw"), "data", "hw_tests"
         )
 
+        self.node = node
+
         ### Publishers
 
-        self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
-        self.cmd_pwmfl_pub = self.create_publisher(
+        self.cmd_vel_pub = node.create_publisher(Twist, "cmd_vel", 1)
+        self.cmd_pwmfl_pub = node.create_publisher(
             Float32, "firmware/wheel_FL/cmd_pwm_duty", 1
         )
-        self.cmd_pwmrl_pub = self.create_publisher(
+        self.cmd_pwmrl_pub = node.create_publisher(
             Float32, "firmware/wheel_RL/cmd_pwm_duty", 1
         )
-        self.cmd_pwmfr_pub = self.create_publisher(
+        self.cmd_pwmfr_pub = node.create_publisher(
             Float32, "firmware/wheel_FR/cmd_pwm_duty", 1
         )
-        self.cmd_pwmrr_pub = self.create_publisher(
+        self.cmd_pwmrr_pub = node.create_publisher(
             Float32, "firmware/wheel_RR/cmd_pwm_duty", 1
         )
-        self.cmd_velfl_pub = self.create_publisher(
+        self.cmd_velfl_pub = node.create_publisher(
             Float32, "firmware/wheel_FL/cmd_velocity", 1
         )
-        self.cmd_velrl_pub = self.create_publisher(
+        self.cmd_velrl_pub = node.create_publisher(
             Float32, "firmware/wheel_RL/cmd_velocity", 1
         )
-        self.cmd_velfr_pub = self.create_publisher(
+        self.cmd_velfr_pub = node.create_publisher(
             Float32, "firmware/wheel_FR/cmd_velocity", 1
         )
-        self.cmd_velrr_pub = self.create_publisher(
+        self.cmd_velrr_pub = node.create_publisher(
             Float32, "firmware/wheel_RR/cmd_velocity", 1
         )
 
         ### Subscriptions
 
-        self.battery_sub = self.create_subscription(
+        self.battery_sub = node.create_subscription(
             Float32, "firmware/battery", self.battery_callback, qos_profile_sensor_data
         )
-        self.wheel_sub = self.create_subscription(
+        self.wheel_sub = node.create_subscription(
             WheelStates,
             "firmware/wheel_states",
             self.wheel_callback,
             qos_profile_sensor_data,
         )
-        self.imu_sub = self.create_subscription(
+        self.imu_sub = node.create_subscription(
             Imu, "firmware/imu", self.imu_callback, qos_profile_sensor_data
         )
+
+        # Spin for 2 secods
+        rclpy.spin_until_future_complete(self.node, Future(), None, 2.0)
 
     def battery_callback(self, data: Float32) -> None:
         self.battery_data = data
@@ -131,7 +136,7 @@ class HardwareTester(Node):
             self.cmd_pwmrl_pub.publish(Float32(data=-pwm_value))
             self.cmd_pwmrr_pub.publish(Float32(data=-pwm_value))
 
-            rclpy.spin_until_future_complete(self, Future(), None, 0.2)
+            rclpy.spin_until_future_complete(self.node, Future(), None, 0.2)
 
             if (
                 self.wheel_data.velocity[0] > speed_limit
@@ -167,7 +172,9 @@ class HardwareTester(Node):
             self.cmd_velrl_pub.publish(Float32(data=wheel_test["velocity"]))
             self.cmd_velrr_pub.publish(Float32(data=wheel_test["velocity"]))
 
-            rclpy.spin_until_future_complete(self, Future(), None, wheel_test["time"])
+            rclpy.spin_until_future_complete(
+                self.node, Future(), None, wheel_test["time"]
+            )
 
             speed_min = wheel_test["velocity"] - wheel_test["offset"]
             speed_max = wheel_test["velocity"] + wheel_test["offset"]
@@ -204,7 +211,9 @@ class HardwareTester(Node):
             self.cmd_pwmrl_pub.publish(Float32(data=-torque_test["pwm"]))
             self.cmd_pwmrr_pub.publish(Float32(data=-torque_test["pwm"]))
 
-            rclpy.spin_until_future_complete(self, Future(), None, torque_test["time"])
+            rclpy.spin_until_future_complete(
+                self.node, Future(), None, torque_test["time"]
+            )
 
             torque_min = torque_test["torque"]
             torque_max = torque_test["torque"] + 1.0
@@ -243,7 +252,7 @@ class HardwareTester(Node):
         gyro_z = imu_valid["imu"]["gyro_z"]
 
         while msg_cnt < 50:
-            rclpy.spin_once(self)
+            rclpy.spin_once(self.node)
 
             time_now = time.monotonic()
             if time_last_msg + imu_valid["imu"]["timeout"] < time_now:
@@ -279,7 +288,7 @@ class HardwareTester(Node):
         batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))
 
         while msg_cnt < 50:
-            rclpy.spin_once(self)
+            rclpy.spin_once(self.node)
 
             time_now = time.monotonic()
             if time_last_msg + batt_valid["battery"]["timeout"] < time_now:
@@ -308,29 +317,17 @@ def test_hw(
 ) -> None:
 
     write_flush("--> Initializing ROS node.. ")
-    rclpy.init()
-    tester = HardwareTester()
+    node = DirectNode(Namespace(node_name_suffix="firmware_tester", spin_time=3.0))
+    print("DONE")
+
+    write_flush("--> Initializing Hardware Tester.. ")
+    tester = HardwareTester(node)
     print("DONE")
 
     try:
         write_flush("--> Checking if firmware node is active.. ")
 
-        # Wait for node discovery
-        timeout_reached = False
-
-        def timer_callback():
-            nonlocal timeout_reached
-            timeout_reached = True
-
-        timer = tester.create_timer(1.0, timer_callback)
-        while not timeout_reached:
-            rclpy.spin_once(tester)
-        tester.destroy_timer(timer)
-
-        if (
-            "firmware",
-            tester.get_namespace(),
-        ) in tester.get_node_names_and_namespaces():
+        if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
             print("YES")
         else:
             print("NO")
@@ -345,7 +342,7 @@ def test_hw(
 
         write_flush("--> Trying to determine board type.. ")
 
-        board_type = determine_board(tester)
+        board_type = determine_board(node)
 
         if board_type is not None:
             print("SUCCESS")
@@ -362,7 +359,7 @@ def test_hw(
         write_flush("--> Trying to check the current firmware version.. ")
 
         current_firmware_version = "<unknown>"
-        current_firmware_version = check_firmware_version(tester)
+        current_firmware_version = check_firmware_version(node)
 
         if current_firmware_version != "<unknown>":
             print("SUCCESS")
@@ -403,5 +400,5 @@ def test_hw(
             tester.check_torque()
 
     finally:
-        tester.destroy_node()
+        node.destroy_node()
         rclpy.shutdown()
