@@ -22,6 +22,7 @@ import os
 import time
 from enum import Enum
 from argparse import Namespace
+from typing import Optional
 
 import rclpy
 from rclpy.task import Future
@@ -35,7 +36,7 @@ from std_msgs.msg import Float32
 
 from .utils import write_flush
 from .board import BoardType, determine_board, check_firmware_version
-from .utils import CSIColor, parse_yaml
+from .utils import parse_yaml, print_ok, print_warn, print_fail, print_test_result
 
 
 class TestMode(Enum):
@@ -54,7 +55,6 @@ class HardwareTester:
     is_new_imu_data = False
     is_new_wheel_data = False
     is_new_battery_data = False
-    is_wheel_loaded = True
 
     imu_data = Imu()
     wheel_data = WheelStates()
@@ -125,8 +125,9 @@ class HardwareTester:
         self.wheel_data = data
         self.is_new_wheel_data = True
 
-    def check_motor_load(self) -> None:
+    def check_motor_load(self) -> bool:
         speed_limit = 1.0
+        motors_loaded = True
 
         for pwm in range(30):
             pwm_value = float(pwm)
@@ -144,23 +145,20 @@ class HardwareTester:
                 and self.wheel_data.velocity[2] > speed_limit
                 and self.wheel_data.velocity[3] < -speed_limit
             ):
-                self.is_wheel_loaded = False
+                motors_loaded = False
                 break
-
-        if self.is_wheel_loaded:
-            print(CSIColor.OKGREEN + "LOAD" + CSIColor.ENDC)
-        else:
-            print(CSIColor.OKGREEN + "UNLOAD" + CSIColor.ENDC)
 
         self.cmd_pwmfl_pub.publish(Float32(data=0.0))
         self.cmd_pwmfr_pub.publish(Float32(data=0.0))
         self.cmd_pwmrl_pub.publish(Float32(data=0.0))
         self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
-    def check_encoder(self) -> bool:
+        return motors_loaded
+
+    def test_encoder(self, motors_loaded=True) -> tuple[bool, Optional[str]]:
         is_error = [False] * 4
 
-        if self.is_wheel_loaded:
+        if motors_loaded:
             wheel_valid = parse_yaml(os.path.join(self.path, "encoder_load.yaml"))
         else:
             wheel_valid = parse_yaml(os.path.join(self.path, "encoder.yaml"))
@@ -189,20 +187,16 @@ class HardwareTester:
         self.cmd_velrr_pub.publish(Float32(data=0.0))
 
         if any(is_error):
-            error_msg = "ERROR WHEEL ENCODER "
-            error_msg += str(is_error)
-            print(CSIColor.FAIL + error_msg + CSIColor.ENDC)
-            return False
+            return False, str(is_error)
 
-        print(CSIColor.OKGREEN + "PASSED" + CSIColor.ENDC)
-        return True
+        return True, None
 
-    def check_torque(self) -> bool:
+    def test_torque(self, motors_loaded=True) -> tuple[bool, Optional[str]]:
         is_error = [False] * 4
 
-        if self.is_wheel_loaded:
+        if motors_loaded:
             torque_valid = parse_yaml(os.path.join(self.path, "torque_load.yaml"))
-        elif self.is_wheel_loaded:
+        else:
             torque_valid = parse_yaml(os.path.join(self.path, "torque.yaml"))
 
         for torque_test in torque_valid["tests"]:
@@ -228,15 +222,11 @@ class HardwareTester:
         self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
         if any(is_error):
-            error_msg = "ERROR WHEEL TORQUE "
-            error_msg += str(is_error)
-            print(CSIColor.FAIL + error_msg + CSIColor.ENDC)
-            return False
+            return False, str(is_error)
 
-        print(CSIColor.OKGREEN + "PASSED" + CSIColor.ENDC)
-        return True
+        return True, None
 
-    def check_imu(self) -> bool:
+    def test_imu(self) -> tuple[bool, Optional[str]]:
         msg_cnt = 0
         time_last_msg = time.monotonic()
         imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))
@@ -256,8 +246,7 @@ class HardwareTester:
 
             time_now = time.monotonic()
             if time_last_msg + imu_valid["imu"]["timeout"] < time_now:
-                print(CSIColor.WARNING + "TIMEOUT" + CSIColor.ENDC)
-                return False
+                return False, "TIMEOUT"
 
             if self.is_new_imu_data:
                 time_last_msg = time_now
@@ -276,13 +265,11 @@ class HardwareTester:
                     and gyro_y - gyro_del < self.imu_data.gyro_y < gyro_y + gyro_del
                     and gyro_z - gyro_del < self.imu_data.gyro_z < gyro_z + gyro_del
                 ):
-                    print(CSIColor.FAIL + "INVALID DATA" + CSIColor.ENDC)
-                    return False
+                    return False, "INVALID DATA"
 
-        print(CSIColor.OKGREEN + "PASSED" + CSIColor.ENDC)
-        return True
+        return True, None
 
-    def check_battery(self) -> bool:
+    def test_battery(self) -> tuple[bool, Optional[str]]:
         msg_cnt = 0
         time_last_msg = time.monotonic()
         batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))
@@ -292,8 +279,7 @@ class HardwareTester:
 
             time_now = time.monotonic()
             if time_last_msg + batt_valid["battery"]["timeout"] < time_now:
-                print(CSIColor.WARNING + "TIMEOUT" + CSIColor.ENDC)
-                return False
+                return False, "TIMEOUT"
 
             if self.is_new_battery_data:
                 time_last_msg = time_now
@@ -301,14 +287,11 @@ class HardwareTester:
                 msg_cnt += 1
 
                 if self.battery_data.data <= batt_valid["battery"]["voltage_min"]:
-                    print(CSIColor.FAIL + "LOW VOLTAGE" + CSIColor.ENDC)
-                    return False
+                    return False, "LOW VOLTAGE"
                 if self.battery_data.data >= batt_valid["battery"]["voltage_max"]:
-                    print(CSIColor.FAIL + "HIGH VOLTAGE" + CSIColor.ENDC)
-                    return False
+                    return False, "HIGH VOLTAGE"
 
-        print(CSIColor.OKGREEN + "PASSED" + CSIColor.ENDC)
-        return True
+        return True, None
 
 
 # pylint: disable=too-many-branches,too-many-statements
@@ -318,20 +301,20 @@ def test_hw(
 
     write_flush("--> Initializing ROS node.. ")
     node = DirectNode(Namespace(node_name_suffix="firmware_tester", spin_time=3.0))
-    print("DONE")
+    print_ok("DONE")
 
     write_flush("--> Initializing Hardware Tester.. ")
     tester = HardwareTester(node)
-    print("DONE")
+    print_ok("DONE")
 
     try:
         write_flush("--> Checking if firmware node is active.. ")
 
         if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
-            print("YES")
+            print_ok("YES")
         else:
-            print("NO")
-            print(
+            print_fail("NO")
+            print_warn(
                 "Firmware node is not active. "
                 "Will not be able to validate hardware. "
                 "Try to flash the firmware or restart the Micro-ROS Agent."
@@ -345,10 +328,10 @@ def test_hw(
         board_type = determine_board(node)
 
         if board_type is not None:
-            print("SUCCESS")
+            print_ok("SUCCESS")
         else:
-            print("FAIL")
-            print(
+            print_fail("FAIL")
+            print_warn(
                 "Can not determine board type. "
                 "Update the firmware and try to rerun the script."
             )
@@ -362,9 +345,9 @@ def test_hw(
         current_firmware_version = check_firmware_version(node)
 
         if current_firmware_version != "<unknown>":
-            print("SUCCESS")
+            print_ok("SUCCESS")
         else:
-            print("FAIL")
+            print_fail("FAIL")
 
         #####################################################
 
@@ -378,26 +361,30 @@ def test_hw(
 
         if hardware in (TestMode.ALL, TestMode.BATTERY):
             write_flush("--> Battery validation.. ")
-            tester.check_battery()
+            print_test_result(tester.test_battery())
 
         if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
             write_flush("--> IMU validation.. ")
-            tester.check_imu()
+            print_test_result(tester.test_imu())
 
         if hardware in (TestMode.ALL, TestMode.TORQUE, TestMode.ENCODER):
-            write_flush("--> Motors load test.. ")
-            tester.check_motor_load()
+            write_flush("--> Checking if motors are loaded.. ")
+            motors_loaded = tester.check_motor_load()
+            if motors_loaded:
+                print("YES")
+            else:
+                print("NO")
 
         if hardware in (TestMode.ALL, TestMode.ENCODER):
             write_flush("--> Encoders validation.. ")
-            tester.check_encoder()
+            print_test_result(tester.test_encoder(motors_loaded))
 
         if (
             hardware in (TestMode.ALL, TestMode.TORQUE)
             and board_type == BoardType.LEOCORE
         ):
             write_flush("--> Torque sensors validation.. ")
-            tester.check_torque()
+            print_test_result(tester.test_torque(motors_loaded))
 
     finally:
         node.destroy_node()

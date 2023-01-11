@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import sys
 from enum import Enum
-from typing import TypeVar
+from typing import TypeVar, Optional
 
 import yaml  # type: ignore
 from whichcraft import which
@@ -32,10 +32,10 @@ T = TypeVar("T")
 
 
 class CSIColor(str, Enum):
-    OKGREEN = "\033[92m"
-    WARNING = "\033[93m"
-    FAIL = "\033[91m"
-    ENDC = "\033[0m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    RESET = "\033[0m"
 
 
 def is_tool(name: str) -> bool:
@@ -51,6 +51,26 @@ def write_flush(msg: str):
     """!Write a message to standard output and flush the buffer"""
     sys.stdout.write(msg)
     sys.stdout.flush()
+
+
+def print_ok(msg: str):
+    print(CSIColor.GREEN + msg + CSIColor.RESET)
+
+
+def print_warn(msg: str):
+    print(CSIColor.YELLOW + msg + CSIColor.RESET)
+
+
+def print_fail(msg: str):
+    print(CSIColor.RED + msg + CSIColor.RESET)
+
+
+def print_test_result(res: tuple[bool, Optional[str]]):
+    if res[0]:
+        print_ok("PASSED")
+    else:
+        assert res[1] is not None
+        print_fail("FAILED (" + res[1] + ")")
 
 
 def query_yes_no(question: str, default: str = "yes") -> bool:

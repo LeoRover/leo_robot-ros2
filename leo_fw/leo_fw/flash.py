@@ -27,7 +27,15 @@ from argparse import Namespace
 from ament_index_python.packages import get_package_share_directory
 from ros2cli.node.direct import DirectNode
 
-from .utils import is_tool, write_flush, query_yes_no, prompt_options
+from .utils import (
+    is_tool,
+    write_flush,
+    query_yes_no,
+    prompt_options,
+    print_ok,
+    print_warn,
+    print_fail,
+)
 from .board import BoardType, determine_board, check_firmware_version
 from .agent import agent_check_active, agent_start, agent_stop
 
@@ -56,10 +64,10 @@ def flash_firmware(
     write_flush("--> Checking if stm32loader is installed.. ")
 
     if is_tool("stm32loader"):
-        print("YES")
+        print_ok("YES")
     else:
-        print("NO")
-        print(
+        print_fail("NO")
+        print_warn(
             "ERROR: Cannot find the stm32loader tool. "
             "Make sure the python3-stm32loader package is installed."
         )
@@ -71,16 +79,16 @@ def flash_firmware(
 
     uros_agent_running = agent_check_active()
     if uros_agent_running:
-        print("YES")
+        print_ok("YES")
     else:
-        print("NO")
+        print_fail("NO")
 
     #####################################################
 
     if uros_agent_running and (board_type is None or check_version):
         write_flush("--> Initializing ROS node.. ")
         node = DirectNode(Namespace(node_name_suffix="firmware_flasher", spin_time=3.0))
-        print("DONE")
+        print_ok("DONE")
 
     #####################################################
 
@@ -88,13 +96,13 @@ def flash_firmware(
         write_flush("--> Checking if firmware node is active.. ")
 
         if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
-            print("YES")
+            print_ok("YES")
             firmware_node_active = True
         else:
-            print("NO")
+            print_fail("NO")
             firmware_node_active = False
             if check_version:
-                print(
+                print_warn(
                     "Firmware node is not active. "
                     "Will not be able to check the board type or current firmware version."
                 )
@@ -109,9 +117,9 @@ def flash_firmware(
         board_type = determine_board(node)
 
         if board_type is not None:
-            print("SUCCESS")
+            print_ok("SUCCESS")
         else:
-            print("FAIL")
+            print_fail("FAIL")
 
     #####################################################
 
@@ -123,9 +131,9 @@ def flash_firmware(
         current_firmware_version = check_firmware_version(node)
 
         if current_firmware_version != "<unknown>":
-            print("SUCCESS")
+            print_ok("SUCCESS")
         else:
-            print("FAIL")
+            print_fail("FAIL")
 
     #####################################################
 
@@ -160,7 +168,7 @@ def flash_firmware(
     if uros_agent_running:
         write_flush("--> Stopping the Micro-ROS Agent.. ")
         agent_stop()
-        print("DONE")
+        print_ok("DONE")
 
     #####################################################
 
@@ -187,4 +195,4 @@ def flash_firmware(
     if uros_agent_running:
         write_flush("--> Starting the Micro-ROS Agent.. ")
         agent_start()
-        print("DONE")
+        print_ok("DONE")
