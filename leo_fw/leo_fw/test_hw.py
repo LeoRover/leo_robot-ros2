@@ -52,6 +52,8 @@ class TestMode(Enum):
 
 class HardwareTester:
 
+    WHEEL_NAMES = ["FL", "RL", "FR", "RR"]
+
     is_new_imu_data = False
     is_new_wheel_data = False
     is_new_battery_data = False
@@ -187,7 +189,9 @@ class HardwareTester:
         self.cmd_velrr_pub.publish(Float32(data=0.0))
 
         if any(is_error):
-            return False, str(is_error)
+            return False, ", ".join(
+                [name for name, error in zip(self.WHEEL_NAMES, is_error) if error]
+            )
 
         return True, None
 
@@ -223,7 +227,9 @@ class HardwareTester:
         self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
         if any(is_error):
-            return False, str(is_error)
+            return False, ", ".join(
+                [name for name, error in zip(self.WHEEL_NAMES, is_error) if error]
+            )
 
         return True, None
 
