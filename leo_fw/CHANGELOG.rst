@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.0 (2023-01-11)
+------------------
 * Show which wheels failed when testing encoders or torque sensors
 * Update hw tests
 * Refactor test result printing
