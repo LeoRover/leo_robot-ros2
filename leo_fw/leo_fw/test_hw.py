@@ -174,8 +174,8 @@ class HardwareTester:
                 self.node, Future(), None, wheel_test["time"]
             )
 
-            speed_min = wheel_test["velocity"] - wheel_test["offset"]
-            speed_max = wheel_test["velocity"] + wheel_test["offset"]
+            speed_min = wheel_test["velocity"] - wheel_test["tolerance"]
+            speed_max = wheel_test["velocity"] + wheel_test["tolerance"]
 
             for i in range(0, 4):
                 if not speed_min < self.wheel_data.velocity[i] < speed_max:
@@ -209,11 +209,12 @@ class HardwareTester:
                 self.node, Future(), None, torque_test["time"]
             )
 
-            torque_min = torque_test["torque"]
-            torque_max = torque_test["torque"] + 1.0
-
             for i in range(4):
-                if not torque_min < self.wheel_data.torque[i] < torque_max:
+                if (
+                    not torque_test["torque_min"]
+                    <= self.wheel_data.torque[i]
+                    <= torque_test["torque_max"]
+                ):
                     is_error[i] = True
 
         self.cmd_pwmfl_pub.publish(Float32(data=0.0))

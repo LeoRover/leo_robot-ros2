@@ -1,13 +1,13 @@
 tests:
   - velocity: 1.0
     time: 2.0
-    offset: 0.3
+    tolerance: 0.3
   - velocity: 2.0
     time: 2.0
-    offset: 0.3
+    tolerance: 0.3
   - velocity: 3.0
     time: 2.0
-    offset: 0.3
+    tolerance: 0.3
   - velocity: 4.0
     time: 3.0
-    offset: 0.3
+    tolerance: 0.3

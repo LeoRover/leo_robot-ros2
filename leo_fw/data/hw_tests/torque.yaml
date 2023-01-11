@@ -1,19 +1,25 @@
 tests:
   - pwm: 10.0
-    torque: 0.01
+    torque_min: 0.01
+    torque_max: 0.05
     time: 1.0
   - pwm: 20.0
-    torque: 0.02
+    torque_min: 0.03
+    torque_max: 0.07
     time: 1.0
   - pwm: 30.0
-    torque: 0.02
+    torque_min: 0.04
+    torque_max: 0.10
     time: 1.0
   - pwm: 40.0
-    torque: 0.02
+    torque_min: 0.05
+    torque_max: 0.13
     time: 1.0
   - pwm: 50.0
-    torque: 0.02
+    torque_min: 0.06
+    torque_max: 0.15
     time: 1.0
   - pwm: 60.0
-    torque: 0.02
+    torque_min: 0.07
+    torque_max: 0.20
     time: 1.0
