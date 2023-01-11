@@ -2,6 +2,9 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.2.1 (2022-11-30)
 ------------------
 * Fix namespace retrieval in leo_system script

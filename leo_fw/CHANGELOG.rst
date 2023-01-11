@@ -2,6 +2,18 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Show which wheels failed when testing encoders or torque sensors
+* Update hw tests
+* Refactor test result printing
+* Add timeout for get_board_type and get_firmware_version services
+* Include newer firmware binaries
+* Use DirectNode in hardware tester
+* Update flash logic
+* Fix checking if uros agent is active when the service is disabled
+* Contributors: Błażej Sowa
+
 1.2.1 (2022-11-30)
 ------------------
 * Fix resolving firmware topic names in firmware_message_converter
