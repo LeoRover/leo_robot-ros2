@@ -48,7 +48,7 @@ def determine_board(node: rclpy.Node) -> Optional[BoardType]:
     ]:
         get_board_type = node.create_client(Trigger, "firmware/get_board_type")
         future = get_board_type.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(node, future)
+        rclpy.spin_until_future_complete(node, future, timeout_sec=5.0)
         if future.done() and not future.exception():
             result = future.result()
             type_str = result.message
@@ -74,7 +74,7 @@ def check_firmware_version(node: rclpy.Node) -> str:
             Trigger, "firmware/get_firmware_version"
         )
         future = get_firmware_version.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(node, future)
+        rclpy.spin_until_future_complete(node, future, timeout_sec=5.0)
         if future.done() and not future.exception():
             result = future.result()
             firmware_version = result.message
