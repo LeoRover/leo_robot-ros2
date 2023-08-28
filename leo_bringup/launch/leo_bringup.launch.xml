@@ -68,4 +68,10 @@
   <node pkg="leo_bringup"
     exec="leo_system" />
 
+  <node pkg="leo_fw" exec="firmware_parameter_bridge">
+    <param name="default_params_file_path"
+      value="$(find-pkg-share leo_bringup)/config/firmware.yaml" />
+    <param name="override_params_file_path" value="" />
+  </node>
+
 </launch>
