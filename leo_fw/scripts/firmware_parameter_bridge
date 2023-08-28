@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+
+import yaml
+from typing import List
+from threading import Event
+
+from std_srvs.srv import Trigger
+import rclpy
+from rclpy.node import Node
+from rcl_interfaces.srv import SetParametersAtomically
+
+
+class ParameterBridge(Node):
+    firmware_parameters: List[rclpy.Parameter] = []
+    default_config: dict = {}
+    override_config: dict = {}
+    type_dict: dict = {
+        str: rclpy.Parameter.Type.STRING,
+        int: rclpy.Parameter.Type.INTEGER,
+        bool: rclpy.Parameter.Type.BOOL,
+        float: rclpy.Parameter.Type.DOUBLE,
+    }
+
+    def __init__(self) -> None:
+        super().__init__("firmware_parameter_bridge")
+
+        self.running: bool = True
+
+        self.declare_parameter("default_params_file_path", "")
+        self.declare_parameter("override_params_file_path", "")
+
+        default_param_file: str = (
+            self.get_parameter("default_params_file_path")
+            .get_parameter_value()
+            .string_value
+        )
+        override_param_file: str = (
+            self.get_parameter("override_params_file_path")
+            .get_parameter_value()
+            .string_value
+        )
+
+        self.load_yaml_configs(default_param_file, override_param_file)
+        self.parse_yaml_configs()
+
+        self.srv = self.create_service(
+            Trigger, "load_firmware_parameters", self.parameters_bridge_callback
+        )
+
+    def load_yaml_configs(self, default_path: str, override_path: str) -> None:
+        if default_path == "":
+            self.running = False
+            self.get_logger().error("Path to file with default parameters is empty")
+            # raise Exception("Path to file with default parameters is empty")
+            return
+
+        with open(default_path, "r") as file:
+            try:
+                self.default_config: dict = yaml.safe_load(file)
+            except yaml.YAMLError as exc:
+                self.running = False
+                print(exc)
+
+        if override_path != "":
+            with open(override_path, "r") as file:
+                try:
+                    self.override_config: dict = yaml.safe_load(file)
+                except yaml.YAMLError as exc:
+                    self.running = False
+                    print(exc)
+        else:
+            self.get_logger().warning("Path to file with override parameters is empty")
+
+    def parse_yaml_configs(
+        self,
+        param_name_prefix: str = "",
+        default_dict: dict = None,
+        override_dict: dict = None,
+    ) -> None:
+        if default_dict is None:
+            default_dict = self.default_config
+        if override_dict is None:
+            override_dict = self.override_config
+
+        default_keys = set(default_dict.keys())
+        override_keys = set(override_dict.keys())
+
+        for key in default_keys:
+            if type(default_dict[key]) == dict:
+                new_name_prefix = param_name_prefix + key + "/"
+                self.parse_yaml_configs(
+                    new_name_prefix,
+                    default_dict[key],
+                    override_dict.get(key, {}),
+                )
+                continue
+
+            elif key in override_keys:
+                value = override_dict[key]
+            else:
+                value = default_dict[key]
+
+            new_param = rclpy.Parameter(
+                param_name_prefix + key, self.type_dict[type(value)], value
+            )
+            self.firmware_parameters.append(new_param)
+
+    def parameters_bridge_callback(
+        self, request: Trigger.Request, response: Trigger.Response
+    ) -> None:
+        firmware_parameterservice_client = self.create_client(
+            SetParametersAtomically, "firmware/set_parameters_atomically"
+        )
+
+        if not firmware_parameterservice_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().error("Firmware parameter service not active")
+            self.running = False
+            return
+
+        param_request = SetParametersAtomically.Request()
+        param_request.parameters = self.firmware_parameters
+        flag = Event()
+        future = firmware_parameterservice_client.call_async(param_request)
+        future.add_done_callback(lambda _: flag.set())
+
+        if not future.done():
+            flag.wait(timeout=5.0)
+
+        if future.result():
+            self.get_logger().info("Succesfuly set parameters for firmware node.")
+            response.success = True
+        else:
+            self.get_logger().error("Unable to set parameters for firmware node.")
+            response.success = False
+
+        self.running = False
+
+
+if __name__ == "__main__":
+    rclpy.init()
+
+    param_bridge = ParameterBridge()
+
+    while param_bridge.running and rclpy.ok():
+        rclpy.spin_once(param_bridge)
+
+    param_bridge.get_logger().info("Finishing node.")
+    param_bridge.destroy_node()
+    rclpy.shutdown()
