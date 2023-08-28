@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-from calendar import day_abbr
 
 import numpy as np
 
