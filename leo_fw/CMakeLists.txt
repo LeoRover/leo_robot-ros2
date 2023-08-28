@@ -46,6 +46,7 @@ install(
     scripts/update
     scripts/test_hw
     scripts/calibrate_imu
+    scripts/firmware_parameter_bridge
   DESTINATION lib/${PROJECT_NAME}
 )
 
