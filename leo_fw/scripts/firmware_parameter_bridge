@@ -7,7 +7,7 @@ from threading import Event
 from std_srvs.srv import Trigger
 import rclpy
 from rclpy.node import Node
-from rcl_interfaces.srv import SetParametersAtomically
+from rcl_interfaces.srv import SetParameters
 
 
 class ParameterBridge(Node):
@@ -113,7 +113,7 @@ class ParameterBridge(Node):
         self.get_logger().info("Got request from firmware!")
         
         firmware_parameterservice_client = self.create_client(
-            SetParametersAtomically, "firmware/set_parameters_atomically"
+            SetParameters, "firmware/set_parameters"
         )
 
         if not firmware_parameterservice_client.wait_for_service(timeout_sec=1.0):
@@ -121,7 +121,7 @@ class ParameterBridge(Node):
             self.running = False
             return
 
-        param_request = SetParametersAtomically.Request()
+        param_request = SetParameters.Request()
         param_request.parameters = self.firmware_parameters
         flag = Event()
         future = firmware_parameterservice_client.call_async(param_request)
