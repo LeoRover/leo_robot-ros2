@@ -47,6 +47,8 @@ class ParameterBridge(Node):
             Trigger, "load_firmware_parameters", self.parameters_bridge_callback
         )
 
+        self.get_logger().info("Starting node.")
+
     def load_yaml_configs(self, default_path: str, override_path: str) -> None:
         if default_path == "":
             self.running = False
@@ -108,6 +110,8 @@ class ParameterBridge(Node):
     def parameters_bridge_callback(
         self, request: Trigger.Request, response: Trigger.Response
     ) -> None:
+        self.get_logger().info("Got request from firmware!")
+        
         firmware_parameterservice_client = self.create_client(
             SetParametersAtomically, "firmware/set_parameters_atomically"
         )
@@ -123,6 +127,7 @@ class ParameterBridge(Node):
         future = firmware_parameterservice_client.call_async(param_request)
         future.add_done_callback(lambda _: flag.set())
 
+        self.get_logger().info("Sending new parameters to firmware node")
         if not future.done():
             flag.wait(timeout=5.0)
 
