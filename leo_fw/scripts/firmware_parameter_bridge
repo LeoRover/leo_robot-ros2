@@ -144,8 +144,6 @@ class ParameterBridge(Node):
             self.get_logger().error("Firmware parameter service not active!")
             return
 
-        self.get_logger().info("Sending parameters.")
-
         param_request = SetParameters.Request()
         param_request.parameters = self.firmware_parameters
         future = self.firmware_parameter_service_client.call_async(param_request)
