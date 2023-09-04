@@ -6,6 +6,10 @@
     description="Absolute path to robot urdf.xacro file" />
   <arg name="tf_frame_prefix" default="" />
 
+  <arg name="override_param_file"
+    default=""
+    description="Absolute path to yaml file with firmware parameters to be overrided" />
+
   <include file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
     <arg name="model" value="$(var model)" />
   </include>
@@ -71,7 +75,7 @@
   <node pkg="leo_fw" exec="firmware_parameter_bridge">
     <param name="default_params_file_path"
       value="$(find-pkg-share leo_bringup)/config/firmware.yaml" />
-    <param name="override_params_file_path" value="" />
+    <param name="override_params_file_path" value="$(var override_param_file)" />
   </node>
 
 </launch>
