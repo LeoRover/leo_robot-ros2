@@ -51,7 +51,6 @@ class TestMode(Enum):
 
 
 class HardwareTester:
-
     WHEEL_NAMES = ["FL", "RL", "FR", "RR"]
 
     is_new_imu_data = False
@@ -166,7 +165,6 @@ class HardwareTester:
             wheel_valid = parse_yaml(os.path.join(self.path, "encoder.yaml"))
 
         for wheel_test in wheel_valid["tests"]:
-
             self.cmd_velfl_pub.publish(Float32(data=wheel_test["velocity"]))
             self.cmd_velfr_pub.publish(Float32(data=wheel_test["velocity"]))
             self.cmd_velrl_pub.publish(Float32(data=wheel_test["velocity"]))
@@ -305,7 +303,6 @@ class HardwareTester:
 def test_hw(
     hardware: TestMode = TestMode.ALL,
 ) -> None:
-
     write_flush("--> Initializing ROS node.. ")
     node = DirectNode(Namespace(node_name_suffix="firmware_tester", spin_time=3.0))
     print_ok("DONE")
