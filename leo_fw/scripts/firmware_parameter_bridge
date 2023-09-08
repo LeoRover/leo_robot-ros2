@@ -37,18 +37,18 @@ class ParameterBridge(Node):
         self.declare_parameter("default_params_file_path", "")
         self.declare_parameter("override_params_file_path", "")
 
-        default_param_file: str = (
+        self.default_param_file: str = (
             self.get_parameter("default_params_file_path")
             .get_parameter_value()
             .string_value
         )
-        override_param_file: str = (
+        self.override_param_file: str = (
             self.get_parameter("override_params_file_path")
             .get_parameter_value()
             .string_value
         )
 
-        self.load_yaml_configs(default_param_file, override_param_file)
+        self.load_yaml_configs()
         self.parse_yaml_configs()
 
         self.firmware_parameter_service_client = self.create_client(
@@ -86,20 +86,20 @@ class ParameterBridge(Node):
         self.get_logger().info("Starting node.")
         self.send_params(boot_firmware=False)
 
-    def load_yaml_configs(self, default_path: str, override_path: str) -> None:
-        if default_path == "":
+    def load_yaml_configs(self) -> None:
+        if self.default_param_file == "":
             self.get_logger().error("Path to file with default parameters is empty!")
             raise Exception()
 
-        with open(default_path, "r") as file:
+        with open(self.default_param_file, "r") as file:
             try:
                 self.default_config: dict = yaml.safe_load(file)
             except yaml.YAMLError as exc:
                 self.get_logger().error(exc)
                 raise Exception()
 
-        if override_path != "":
-            with open(override_path, "r") as file:
+        if self.override_param_file != "":
+            with open(self.override_param_file, "r") as file:
                 try:
                     self.override_config: dict = yaml.safe_load(file)
                 except yaml.YAMLError as exc:
