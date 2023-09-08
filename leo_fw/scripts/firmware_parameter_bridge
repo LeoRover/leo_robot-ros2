@@ -59,14 +59,21 @@ class ParameterBridge(Node):
 
         self.frimware_boot_service_client = self.create_client(
             Trigger,
-            "firmware/boot_firmware",
+            "firmware/boot",
+            callback_group=MutuallyExclusiveCallbackGroup(),
+        )
+
+        self.param_bridge_srv = self.create_service(
+            Trigger,
+            "upload_params",
+            self.param_bridge_srv_callback,
             callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
         self.firmware_subscriber = self.create_subscription(
             Empty,
-            "firmware/boot_firmware",
-            self.parameters_bridge_callback,
+            "firmware/param_trigger",
+            self.param_bridge_sub_callback,
             QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=1,
@@ -135,9 +142,32 @@ class ParameterBridge(Node):
             )
             self.firmware_parameters.append(new_param.to_parameter_msg())
 
-    def parameters_bridge_callback(self, msg: Empty) -> None:
+    def param_bridge_sub_callback(self, msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
         self.send_params()
+
+    def param_bridge_srv_callback(
+        self, request: Trigger.Request, response: Trigger.Response
+    ) -> Trigger.Response:
+        self.get_logger().info("User request for loading parameters.")
+
+        try:
+            self.load_yaml_configs()
+            self.parse_yaml_configs()
+        except Exception as e:
+            response.success = False
+            response.message = e
+            return response
+
+        result = self.send_params(boot_firmware=False)
+        if result:
+            response.message = "Successfully set firmware parameters."
+            response.success = True
+        else:
+            response.message = "Failed to set firmware parameters."
+            response.success = False
+
+        return response
 
     def send_params(self, boot_firmware=True):
         if not self.firmware_parameter_service_client.wait_for_service(timeout_sec=1.0):
@@ -153,13 +183,15 @@ class ParameterBridge(Node):
         self.executor.spin_until_future_complete(future, 5.0)
 
         if future.result():
-            self.get_logger().info("Succesfuly set parameters for firmware node.")
+            self.get_logger().info("Successfully set parameters for firmware node.")
             if boot_firmware:
-                self.trigger_boot()
+                return self.trigger_boot()
+            return True
         else:
             self.get_logger().error("Unable to set parameters for firmware node.")
+            return False
 
-    def trigger_boot(self):
+    def trigger_boot(self) -> bool:
         if not self.frimware_boot_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().error("Firmware boot service not active!")
 
@@ -172,8 +204,10 @@ class ParameterBridge(Node):
 
         if boot_future.result():
             self.get_logger().info("Triggering firmware boot successful.")
+            return True
         else:
             self.get_logger().error("Didn't get response from firmware boot service!")
+            return False
 
 
 if __name__ == "__main__":
