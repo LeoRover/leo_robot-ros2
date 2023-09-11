@@ -150,7 +150,8 @@ class ParameterBridge(Node):
         self, request: Trigger.Request, response: Trigger.Response
     ) -> Trigger.Response:
         self.get_logger().info("User request for loading parameters.")
-
+        self.firmware_parameters = []
+        
         try:
             self.load_yaml_configs()
             self.parse_yaml_configs()
