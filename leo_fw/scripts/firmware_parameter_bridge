@@ -51,25 +51,29 @@ class ParameterBridge(Node):
         self.load_yaml_configs()
         self.parse_yaml_configs()
 
+        param_client_cb_group = MutuallyExclusiveCallbackGroup()
         self.firmware_parameter_service_client = self.create_client(
             SetParameters,
             "firmware/set_parameters",
-            callback_group=MutuallyExclusiveCallbackGroup(),
+            callback_group=param_client_cb_group,
         )
 
+        boot_client_cb_group = MutuallyExclusiveCallbackGroup()
         self.frimware_boot_service_client = self.create_client(
             Trigger,
             "firmware/boot",
-            callback_group=MutuallyExclusiveCallbackGroup(),
+            callback_group=boot_client_cb_group,
         )
 
+        service_cb_group = MutuallyExclusiveCallbackGroup()
         self.param_bridge_srv = self.create_service(
             Trigger,
             "upload_params",
             self.param_bridge_srv_callback,
-            callback_group=MutuallyExclusiveCallbackGroup(),
+            callback_group=service_cb_group,
         )
 
+        sub_cb_group = MutuallyExclusiveCallbackGroup()
         self.firmware_subscriber = self.create_subscription(
             Empty,
             "firmware/param_trigger",
@@ -80,7 +84,7 @@ class ParameterBridge(Node):
                 reliability=QoSReliabilityPolicy.BEST_EFFORT,
                 durability=QoSDurabilityPolicy.VOLATILE,
             ),
-            callback_group=MutuallyExclusiveCallbackGroup(),
+            callback_group=sub_cb_group,
         )
 
         self.get_logger().info("Starting node.")
