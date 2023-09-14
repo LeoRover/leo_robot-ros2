@@ -2,7 +2,7 @@
 
 import yaml
 
-from rcl_interfaces.msg import Parameter as ParameterMsg
+from rcl_interfaces.msg import Parameter as ParameterMsg, SetParametersResult
 from rcl_interfaces.srv import SetParameters
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
@@ -51,29 +51,25 @@ class ParameterBridge(Node):
         self.load_yaml_configs()
         self.parse_yaml_configs()
 
-        param_client_cb_group = MutuallyExclusiveCallbackGroup()
+        cb_group = MutuallyExclusiveCallbackGroup()
         self.firmware_parameter_service_client = self.create_client(
             SetParameters,
             "firmware/set_parameters",
-            callback_group=param_client_cb_group,
+            callback_group=cb_group,
         )
 
-        boot_client_cb_group = MutuallyExclusiveCallbackGroup()
         self.frimware_boot_service_client = self.create_client(
             Trigger,
             "firmware/boot",
-            callback_group=boot_client_cb_group,
+            callback_group=cb_group,
         )
 
-        service_cb_group = MutuallyExclusiveCallbackGroup()
         self.param_bridge_srv = self.create_service(
             Trigger,
             "upload_params",
             self.param_bridge_srv_callback,
-            callback_group=service_cb_group,
         )
 
-        sub_cb_group = MutuallyExclusiveCallbackGroup()
         self.firmware_subscriber = self.create_subscription(
             Empty,
             "firmware/param_trigger",
@@ -84,7 +80,6 @@ class ParameterBridge(Node):
                 reliability=QoSReliabilityPolicy.BEST_EFFORT,
                 durability=QoSDurabilityPolicy.VOLATILE,
             ),
-            callback_group=sub_cb_group,
         )
 
         self.get_logger().info("Starting node.")
@@ -93,22 +88,22 @@ class ParameterBridge(Node):
     def load_yaml_configs(self) -> None:
         if self.default_param_file == "":
             self.get_logger().error("Path to file with default parameters is empty!")
-            raise Exception()
+            raise UserWarning("Path to file with default parameters is empty!")
 
-        with open(self.default_param_file, "r") as file:
+        with open(self.default_param_file, "r", encoding="utf-8") as file:
             try:
                 self.default_config: dict = yaml.safe_load(file)
             except yaml.YAMLError as exc:
                 self.get_logger().error(exc)
-                raise Exception()
+                raise
 
         if self.override_param_file != "":
-            with open(self.override_param_file, "r") as file:
+            with open(self.override_param_file, "r", encoding="utf-8") as file:
                 try:
                     self.override_config: dict = yaml.safe_load(file)
                 except yaml.YAMLError as exc:
                     self.get_logger().error(exc)
-                    raise Exception()
+                    raise
         else:
             self.get_logger().warning("Path to file with override parameters is empty.")
 
@@ -127,7 +122,7 @@ class ParameterBridge(Node):
         override_keys = set(override_dict.keys())
 
         for key in default_keys:
-            if type(default_dict[key]) == dict:
+            if isinstance(default_dict[key], dict):
                 new_name_prefix = param_name_prefix + key + "/"
                 self.parse_yaml_configs(
                     new_name_prefix,
@@ -136,7 +131,7 @@ class ParameterBridge(Node):
                 )
                 continue
 
-            elif key in override_keys:
+            if key in override_keys:
                 value = override_dict[key]
             else:
                 value = default_dict[key]
@@ -155,18 +150,20 @@ class ParameterBridge(Node):
     ) -> Trigger.Response:
         self.get_logger().info("User request for loading parameters.")
         self.firmware_parameters = []
-        
+
         try:
             self.load_yaml_configs()
             self.parse_yaml_configs()
-        except Exception as e:
+        except (yaml.YAMLError, UserWarning) as e:
             response.success = False
             response.message = e
             return response
 
-        result = self.send_params(boot_firmware=False)
+        result, num = self.send_params(boot_firmware=False)
         if result:
-            response.message = "Successfully set firmware parameters."
+            response.message = "Successfully set firmware parameters."   
+            if num > 0:
+                response.message += f" {num} parameter(s) was(were) not set. Check logs: `ros-logs`." 
             response.success = True
         else:
             response.message = "Failed to set firmware parameters."
@@ -174,10 +171,11 @@ class ParameterBridge(Node):
 
         return response
 
-    def send_params(self, boot_firmware=True) -> bool:
+    def send_params(self, boot_firmware=True) -> tuple[bool, int]:
+        not_set_params_num = 0
         if not self.firmware_parameter_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().error("Firmware parameter service not active!")
-            return
+            return (False, not_set_params_num)
 
         param_request = SetParameters.Request()
         param_request.parameters = self.firmware_parameters
@@ -188,13 +186,21 @@ class ParameterBridge(Node):
         self.executor.spin_until_future_complete(future, 5.0)
 
         if future.result():
+            result: SetParametersResult
+            param: ParameterMsg
+            for result, param in zip(future.result().results, param_request.parameters):
+                if not result.successful:
+                    self.get_logger().warning(f"Parameter '{param.name}' not set. Reason: '{result.reason}'")
+                    not_set_params_num += 1
+            
             self.get_logger().info("Successfully set parameters for firmware node.")
             if boot_firmware:
-                return self.trigger_boot()
-            return True
-        else:
-            self.get_logger().error("Unable to set parameters for firmware node.")
-            return False
+                return (self.trigger_boot(), not_set_params_num)
+            
+            return (True, not_set_params_num)
+        
+        self.get_logger().error("Unable to set parameters for firmware node.")
+        return (False, not_set_params_num)
 
     def trigger_boot(self) -> bool:
         if not self.frimware_boot_service_client.wait_for_service(timeout_sec=1.0):
@@ -210,9 +216,9 @@ class ParameterBridge(Node):
         if boot_future.result():
             self.get_logger().info("Triggering firmware boot successful.")
             return True
-        else:
-            self.get_logger().error("Didn't get response from firmware boot service!")
-            return False
+        
+        self.get_logger().error("Didn't get response from firmware boot service!")
+        return False
 
 
 if __name__ == "__main__":
