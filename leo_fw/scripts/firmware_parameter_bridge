@@ -161,9 +161,11 @@ class ParameterBridge(Node):
 
         result, num = self.send_params(boot_firmware=False)
         if result:
-            response.message = "Successfully set firmware parameters."   
+            response.message = "Successfully set firmware parameters."
             if num > 0:
-                response.message += f" {num} parameter(s) was(were) not set. Check logs: `ros-logs`." 
+                response.message += (
+                    f" {num} parameter(s) was(were) not set. Check logs: `ros-logs`."
+                )
             response.success = True
         else:
             response.message = "Failed to set firmware parameters."
@@ -190,15 +192,17 @@ class ParameterBridge(Node):
             param: ParameterMsg
             for result, param in zip(future.result().results, param_request.parameters):
                 if not result.successful:
-                    self.get_logger().warning(f"Parameter '{param.name}' not set. Reason: '{result.reason}'")
+                    self.get_logger().warning(
+                        f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
+                    )
                     not_set_params_num += 1
-            
+
             self.get_logger().info("Successfully set parameters for firmware node.")
             if boot_firmware:
                 return (self.trigger_boot(), not_set_params_num)
-            
+
             return (True, not_set_params_num)
-        
+
         self.get_logger().error("Unable to set parameters for firmware node.")
         return (False, not_set_params_num)
 
@@ -216,7 +220,7 @@ class ParameterBridge(Node):
         if boot_future.result():
             self.get_logger().info("Triggering firmware boot successful.")
             return True
-        
+
         self.get_logger().error("Didn't get response from firmware boot service!")
         return False
 
