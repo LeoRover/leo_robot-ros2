@@ -252,7 +252,7 @@ private:
         "Shutting down wheel_odom_with_covariance publisher.");
       wheel_odom_sub_.reset();
       wheel_odom_pub_.reset();
-      wheek_odom_advertised = false;
+      wheel_odom_advertised = false;
     }
 
     if (!wheel_odom_advertised && wheel_odom_publishers > 0) {
