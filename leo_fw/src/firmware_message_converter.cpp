@@ -246,16 +246,15 @@ private:
 
     size_t wheel_odom_publishers = count_publishers(wheel_odom_topic_);
 
-    if (wheel_odom_advertised && wheel_odom_publishers == 0) {
+    if (wheel_odom_pub_ && wheel_odom_publishers == 0) {
       RCLCPP_INFO(
         get_logger(), "firmware/wheel_odom topic no longer has any publishers. "
         "Shutting down wheel_odom_with_covariance publisher.");
       wheel_odom_sub_.reset();
       wheel_odom_pub_.reset();
-      wheel_odom_advertised = false;
     }
 
-    if (!wheel_odom_advertised && wheel_odom_publishers > 0) {
+    if (!wheel_odom_pub_ && wheel_odom_publishers > 0) {
       RCLCPP_INFO(
         get_logger(), "Detected a publisher on firmware/wheel_odom topic. "
         "Starting publishing on wheel_odom_with_covariance topic.");
@@ -263,27 +262,25 @@ private:
       wheel_odom_sub_ = create_subscription<leo_msgs::msg::WheelOdom>(
         wheel_odom_topic_, rclcpp::QoS(5).best_effort(),
         std::bind(&FirmwareMessageConverter::wheel_odom_callback, this, _1));
-      wheel_odom_advertised = true;
     }
 
     size_t wheel_odom_mecanum_publishers = count_publishers(wheel_odom_mecanum_topic_);
 
-    if (wheel_odom_mecanum_advertised && wheel_odom_mecanum_publishers == 0) {
+    if (wheel_odom_mecanum_pub_ && wheel_odom_mecanum_publishers == 0) {
       RCLCPP_INFO(
         get_logger(),
         "firmware/wheel_odom_mecanum topic no longer has any publishers. "
         "Shutting down wheel_odom_with_covariance publisher.");
       wheel_odom_mecanum_sub_.reset();
-      wheel_odom_pub_.reset();
-      wheel_odom_mecanum_advertised = false;
+      wheel_odom_mecanum_pub_.reset();
     }
 
-    if (!wheel_odom_mecanum_advertised && wheel_odom_mecanum_publishers > 0) {
+    if (!wheel_odom_mecanum_pub_ && wheel_odom_mecanum_publishers > 0) {
       RCLCPP_INFO(
         get_logger(),
         "Detected a publisher on firmware/wheel_odom_mecanum topic. "
         "Starting publishing on wheel_odom_with_covariance topic.");
-      wheel_odom_pub_ = create_publisher<nav_msgs::msg::Odometry>(
+      wheel_odom_mecanum_pub_ = create_publisher<nav_msgs::msg::Odometry>(
         "wheel_odom_with_covariance", 10);
       wheel_odom_mecanum_sub_ =
         create_subscription<leo_msgs::msg::WheelOdomMecanum>(
@@ -291,7 +288,6 @@ private:
         std::bind(
           &FirmwareMessageConverter::mecanum_odom_callback, this,
           _1));
-      wheel_odom_mecanum_advertised = true;
     }
 
     size_t imu_publishers = count_publishers(imu_topic_);
@@ -345,6 +341,7 @@ private:
   // Publishers
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr wheel_odom_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr wheel_odom_mecanum_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 
   // Subscriptions
@@ -355,10 +352,6 @@ private:
 
   // Service
   rclcpp::Service<leo_msgs::srv::SetImuCalibration>::SharedPtr set_imu_calibration_service;
-
-  // Flags
-  bool wheel_odom_advertised;
-  bool wheel_odom_mecanum_advertised;
 };
 
 }  // namespace leo_fw
