@@ -134,7 +134,7 @@ private:
         wheel_odom_mecanum_twist_covariance_diagonal_[i];
     }
 
-    wheel_odom_pub_->publish(wheel_odom);
+    wheel_odom_mecanum_pub_->publish(wheel_odom);
   }
 
   void imu_callback(const leo_msgs::msg::Imu::SharedPtr msg) const
