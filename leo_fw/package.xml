@@ -19,30 +19,31 @@
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <!-- Python -->
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>ros2cli</exec_depend>
-  <exec_depend>std_srvs</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>python3-yaml</exec_depend>
-  <exec_depend>python3-whichcraft</exec_depend>
   <exec_depend>python3-dbus</exec_depend>
+  <exec_depend>python3-whichcraft</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>ros2cli</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
 
   <!-- C++ -->
+  <build_depend>leo_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
   <build_depend>rclcpp</build_depend>
   <build_depend>rclcpp_components</build_depend>
   <build_depend>sensor_msgs</build_depend>
-  <build_depend>nav_msgs</build_depend>
-  <build_depend>leo_msgs</build_depend>
   <build_depend>yaml-cpp</build_depend>
 
+  <exec_depend>leo_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>leo_msgs</exec_depend>
 
+  <!-- Test -->
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_cmake_black</test_depend>
   <test_depend>ament_cmake_copyright</test_depend>
