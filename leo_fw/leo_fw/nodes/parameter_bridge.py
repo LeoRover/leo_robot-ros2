@@ -18,7 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from os import path
+from typing import Optional
+
 import yaml  # type: ignore
+
+from ament_index_python import get_package_share_directory
 
 from rcl_interfaces.msg import Parameter as ParameterMsg, SetParametersResult
 from rcl_interfaces.srv import SetParameters
@@ -54,7 +59,12 @@ class ParameterBridge(Node):
         super().__init__("firmware_parameter_bridge")
         self.executor = executor
 
-        self.declare_parameter("default_params_file_path", "")
+        leo_fw_share = get_package_share_directory("leo_fw")
+
+        self.declare_parameter(
+            "default_params_file_path",
+            path.join(leo_fw_share, "data", "default_firmware_params.yaml"),
+        )
         self.declare_parameter("override_params_file_path", "")
 
         self.default_param_file: str = (

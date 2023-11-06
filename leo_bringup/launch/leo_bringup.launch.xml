@@ -10,13 +10,13 @@
     description="Flag specifying wheel types of the robot for visualization purposes" />
   <arg name="tf_frame_prefix" default="" />
 
-  <arg name="override_param_file"
+  <arg name="firmware_params_file"
     default=""
-    description="Absolute path to yaml file with firmware parameters to be overrided" />
+    description="Absolute path to the yaml file with firmware parameters to be overrided" />
 
   <include file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
     <arg name="model" value="$(var model)" />
-    <arg name="mecanum_wheels" value="$(var mecanum_wheels)"/>
+    <arg name="mecanum_wheels" value="$(var mecanum_wheels)" />
   </include>
 
   <node pkg="web_video_server"
@@ -37,6 +37,10 @@
   <node pkg="leo_fw" exec="firmware_message_converter">
     <param name="tf_frame_prefix" value="$(var tf_frame_prefix)" />
     <param from="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
+  </node>
+
+  <node pkg="leo_fw" exec="firmware_parameter_bridge">
+    <param name="override_params_file_path" value="$(var firmware_params_file)" />
   </node>
 
   <node_container namespace=""
@@ -76,11 +80,5 @@
 
   <node pkg="leo_bringup"
     exec="leo_system" />
-
-  <node pkg="leo_fw" exec="firmware_parameter_bridge">
-    <param name="default_params_file_path"
-      value="$(find-pkg-share leo_bringup)/config/firmware.yaml" />
-    <param name="override_params_file_path" value="$(var override_param_file)" />
-  </node>
 
 </launch>
