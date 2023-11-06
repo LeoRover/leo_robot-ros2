@@ -3,9 +3,7 @@
 <package format="3">
   <name>leo_fw</name>
   <version>1.3.0</version>
-  <description>
-    Binary releases of Leo Rover firmware and related utilities
-  </description>
+  <description> Binary releases of Leo Rover firmware and related utilities </description>
 
   <maintainer email="support@fictionlab.pl">Fictionlab</maintainer>
 
@@ -44,7 +42,15 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>leo_msgs</exec_depend>
-  
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_black</test_depend>
+  <test_depend>ament_cmake_copyright</test_depend>
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>ament_cmake_mypy</test_depend>
+  <test_depend>ament_cmake_uncrustify</test_depend>
+  <test_depend>ament_cmake_xmllint</test_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

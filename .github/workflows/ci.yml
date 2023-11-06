@@ -29,31 +29,3 @@ jobs:
           UPSTREAM_WORKSPACE: "github:LeoRover/leo_common-ros2#humble"
           PYLINT_CHECK: true
           PYLINT_ARGS: "--rcfile=src/leo_robot-ros2/.pylintrc"
-
-  ament_lint:
-    name: ament_${{ matrix.linter }}
-    runs-on: ubuntu-20.04
-    container:
-      image: ros:humble
-    strategy:
-      fail-fast: false
-      matrix:
-        linter: [copyright, lint_cmake, mypy, uncrustify, xmllint]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ros-tooling/action-ros-lint@v0.1
-        with:
-          distribution: humble
-          linter: ${{ matrix.linter }}
-          package-name: |
-            leo_bringup
-            leo_fw
-            leo_robot
-
-  black_check:
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-      - name: Check formatting
-        uses: psf/black@stable
