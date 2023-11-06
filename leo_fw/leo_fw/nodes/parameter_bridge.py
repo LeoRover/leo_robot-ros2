@@ -167,12 +167,12 @@ class ParameterBridge(Node):
         )
         return parameters
 
-    def param_trigger_callback(self, msg: Empty) -> None:
+    def param_trigger_callback(self, _msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
         self.send_params()
 
     def upload_params_callback(
-        self, request: Trigger.Request, response: Trigger.Response
+        self, _request: Trigger.Request, response: Trigger.Response
     ) -> Trigger.Response:
         self.get_logger().info("User request for loading parameters.")
 
