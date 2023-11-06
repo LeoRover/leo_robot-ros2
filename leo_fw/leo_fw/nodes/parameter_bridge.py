@@ -46,8 +46,8 @@ from std_srvs.srv import Trigger
 
 class ParameterBridge(Node):
     firmware_parameters: list[ParameterMsg] = []
-    default_config: dict = {}
-    override_config: dict = {}
+    default_params: dict = {}
+    override_params: dict = {}
     type_dict: dict = {
         str: Parameter.Type.STRING,
         int: Parameter.Type.INTEGER,
@@ -67,19 +67,8 @@ class ParameterBridge(Node):
         )
         self.declare_parameter("override_params_file_path", "")
 
-        self.default_params_file: str = (
-            self.get_parameter("default_params_file_path")
-            .get_parameter_value()
-            .string_value
-        )
-        self.override_params_file: str = (
-            self.get_parameter("override_params_file_path")
-            .get_parameter_value()
-            .string_value
-        )
-
-        self.load_yaml_configs()
-        self.parse_yaml_configs()
+        self.load_default_params()
+        self.load_override_params()
 
         cb_group = MutuallyExclusiveCallbackGroup()
         self.firmware_parameter_service_client = self.create_client(
@@ -97,13 +86,13 @@ class ParameterBridge(Node):
         self.param_bridge_srv = self.create_service(
             Trigger,
             "upload_params",
-            self.param_bridge_srv_callback,
+            self.upload_params_callback,
         )
 
         self.firmware_subscriber = self.create_subscription(
             Empty,
             "firmware/param_trigger",
-            self.param_bridge_sub_callback,
+            self.param_trigger_callback,
             QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=1,
@@ -115,79 +104,80 @@ class ParameterBridge(Node):
         self.get_logger().info("Starting node.")
         self.send_params(boot_firmware=False)
 
-    def load_yaml_configs(self) -> None:
-        if self.default_params_file == "":
-            self.get_logger().error("Path to file with default parameters is empty!")
-            raise UserWarning("Path to file with default parameters is empty!")
+    def load_default_params(self) -> None:
+        default_params_file: str = (
+            self.get_parameter("default_params_file_path")
+            .get_parameter_value()
+            .string_value
+        )
 
-        with open(self.default_params_file, "r", encoding="utf-8") as file:
+        with open(default_params_file, "r", encoding="utf-8") as file:
             try:
-                self.default_config: dict = yaml.safe_load(file)
+                self.default_params: dict = yaml.safe_load(file)
             except yaml.YAMLError as exc:
                 self.get_logger().error(exc)
                 raise
 
-        if self.override_params_file != "":
-            with open(self.override_params_file, "r", encoding="utf-8") as file:
+    def load_override_params(self) -> None:
+        override_params_file: str = (
+            self.get_parameter("override_params_file_path")
+            .get_parameter_value()
+            .string_value
+        )
+
+        if override_params_file != "":
+            with open(override_params_file, "r", encoding="utf-8") as file:
                 try:
-                    self.override_config: dict = yaml.safe_load(file)
+                    self.override_params: dict = yaml.safe_load(file)
                 except yaml.YAMLError as exc:
                     self.get_logger().error(exc)
                     raise
         else:
+            self.override_params = {}
             self.get_logger().warning("Path to file with override parameters is empty.")
 
-    def parse_yaml_configs(
-        self,
-        param_name_prefix: str = "",
-        default_dict: Optional[dict] = None,
-        override_dict: Optional[dict] = None,
-    ) -> None:
-        if default_dict is None:
-            default_dict = self.default_config
-        if override_dict is None:
-            override_dict = self.override_config
+    def parse_firmware_parameters(self) -> list[ParameterMsg]:
+        def parse_parameters_recursive(
+            parameters: list[ParameterMsg],
+            param_name_prefix: str,
+            default_dict: dict,
+            override_dict: dict,
+        ) -> None:
+            for key, value in default_dict.items():
+                if isinstance(value, dict):
+                    new_name_prefix = param_name_prefix + key + "/"
+                    parse_parameters_recursive(
+                        parameters,
+                        new_name_prefix,
+                        value,
+                        override_dict.get(key, {}),
+                    )
+                    continue
 
-        default_keys = set(default_dict.keys())
-        override_keys = set(override_dict.keys())
+                if key in override_dict:
+                    value = override_dict[key]
 
-        for key in default_keys:
-            if isinstance(default_dict[key], dict):
-                new_name_prefix = param_name_prefix + key + "/"
-                self.parse_yaml_configs(
-                    new_name_prefix,
-                    default_dict[key],
-                    override_dict.get(key, {}),
+                new_param = rclpy.Parameter(
+                    param_name_prefix + key, self.type_dict[type(value)], value
                 )
-                continue
+                parameters.append(new_param.to_parameter_msg())
 
-            if key in override_keys:
-                value = override_dict[key]
-            else:
-                value = default_dict[key]
+        parameters: list[ParameterMsg] = []
+        parse_parameters_recursive(
+            parameters, "", self.default_params, self.override_params
+        )
+        return parameters
 
-            new_param = rclpy.Parameter(
-                param_name_prefix + key, self.type_dict[type(value)], value
-            )
-            self.firmware_parameters.append(new_param.to_parameter_msg())
-
-    def param_bridge_sub_callback(self, msg: Empty) -> None:
+    def param_trigger_callback(self, msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
         self.send_params()
 
-    def param_bridge_srv_callback(
+    def upload_params_callback(
         self, request: Trigger.Request, response: Trigger.Response
     ) -> Trigger.Response:
         self.get_logger().info("User request for loading parameters.")
-        self.firmware_parameters = []
 
-        try:
-            self.load_yaml_configs()
-            self.parse_yaml_configs()
-        except (yaml.YAMLError, UserWarning) as e:
-            response.success = False
-            response.message = e
-            return response
+        self.load_override_params()
 
         result, num = self.send_params(boot_firmware=False)
         if result:
@@ -210,7 +200,7 @@ class ParameterBridge(Node):
             return (False, not_set_params_num)
 
         param_request = SetParameters.Request()
-        param_request.parameters = self.firmware_parameters
+        param_request.parameters = self.parse_firmware_parameters()
         future = self.firmware_parameter_service_client.call_async(param_request)
 
         self.get_logger().info("Sending new parameters to firmware node.")
