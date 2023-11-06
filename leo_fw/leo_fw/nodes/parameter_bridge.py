@@ -67,12 +67,12 @@ class ParameterBridge(Node):
         )
         self.declare_parameter("override_params_file_path", "")
 
-        self.default_param_file: str = (
+        self.default_params_file: str = (
             self.get_parameter("default_params_file_path")
             .get_parameter_value()
             .string_value
         )
-        self.override_param_file: str = (
+        self.override_params_file: str = (
             self.get_parameter("override_params_file_path")
             .get_parameter_value()
             .string_value
@@ -116,19 +116,19 @@ class ParameterBridge(Node):
         self.send_params(boot_firmware=False)
 
     def load_yaml_configs(self) -> None:
-        if self.default_param_file == "":
+        if self.default_params_file == "":
             self.get_logger().error("Path to file with default parameters is empty!")
             raise UserWarning("Path to file with default parameters is empty!")
 
-        with open(self.default_param_file, "r", encoding="utf-8") as file:
+        with open(self.default_params_file, "r", encoding="utf-8") as file:
             try:
                 self.default_config: dict = yaml.safe_load(file)
             except yaml.YAMLError as exc:
                 self.get_logger().error(exc)
                 raise
 
-        if self.override_param_file != "":
-            with open(self.override_param_file, "r", encoding="utf-8") as file:
+        if self.override_params_file != "":
+            with open(self.override_params_file, "r", encoding="utf-8") as file:
                 try:
                     self.override_config: dict = yaml.safe_load(file)
                 except yaml.YAMLError as exc:
@@ -140,8 +140,8 @@ class ParameterBridge(Node):
     def parse_yaml_configs(
         self,
         param_name_prefix: str = "",
-        default_dict: dict = None,
-        override_dict: dict = None,
+        default_dict: Optional[dict] = None,
+        override_dict: Optional[dict] = None,
     ) -> None:
         if default_dict is None:
             default_dict = self.default_config
