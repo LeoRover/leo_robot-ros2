@@ -19,7 +19,6 @@
 # THE SOFTWARE.
 
 from os import path
-from typing import Optional
 
 import yaml  # type: ignore
 
