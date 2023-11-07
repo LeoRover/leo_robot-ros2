@@ -36,8 +36,14 @@
     <param from="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
   </node>
 
+  <let if="$(var mecanum_wheels)" name="firmware_default_params_file"
+    value="$(find-pkg-share leo_bringup)/config/firmware_mecanum_params.yaml" />
+  <let unless="$(var mecanum_wheels)" name="firmware_default_params_file"
+    value="$(find-pkg-share leo_bringup)/config/firmware_diff_drive_params.yaml" />
+
   <node pkg="leo_fw" exec="firmware_parameter_bridge">
-    <param name="override_params_file_path" value="$(var firmware_params_file)" />
+    <param name="default_params_file_path" value="$(var firmware_default_params_file)" />
+    <param name="override_params_file_path" value="$(var firmware_override_params_file)" />
   </node>
 
   <node_container namespace=""
