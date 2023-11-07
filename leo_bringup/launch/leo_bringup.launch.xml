@@ -1,16 +1,13 @@
 <launch version="0.1.1">
 
-  <arg
-    name="model"
+  <arg name="model"
     default="$(find-pkg-share leo_description)/urdf/leo.urdf.xacro"
     description="Absolute path to robot urdf.xacro file" />
-  <arg
-    name="mecanum_wheels"
+  <arg name="mecanum_wheels"
     default="false"
     description="Flag specifying wheel types of the robot for visualization purposes" />
   <arg name="tf_frame_prefix" default="" />
-
-  <arg name="firmware_params_file"
+  <arg name="firmware_override_params_file"
     default=""
     description="Absolute path to the yaml file with firmware parameters to be overrided" />
 
