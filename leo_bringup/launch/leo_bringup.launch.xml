@@ -12,7 +12,7 @@
   <arg
     name="mecanum_wheels"
     default="false"
-    description="Flag specifying wheel types of the robot for visualization purposes" />
+    description="Flag specifying wheel types of the robot" />
 
   <arg name="tf_frame_prefix"
     default=""
