@@ -1,5 +1,9 @@
 <launch version="0.1.1">
 
+  <arg name="spawn_state_publisher"
+    default="true"
+    description="Whether to start the robot_state_publisher node" />
+
   <arg
     name="model"
     default="$(find-pkg-share leo_description)/urdf/leo.urdf.xacro"
@@ -10,7 +14,8 @@
     description="Flag specifying wheel types of the robot for visualization purposes" />
   <arg name="tf_frame_prefix" default="" />
 
-  <include file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
+  <include if="$(var spawn_state_publisher)"
+    file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
     <arg name="model" value="$(var model)" />
     <arg name="mecanum_wheels" value="$(var mecanum_wheels)"/>
   </include>
