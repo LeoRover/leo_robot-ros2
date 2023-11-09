@@ -8,11 +8,15 @@
     name="model"
     default="$(find-pkg-share leo_description)/urdf/leo.urdf.xacro"
     description="Absolute path to robot urdf.xacro file" />
+
   <arg
     name="mecanum_wheels"
     default="false"
     description="Flag specifying wheel types of the robot for visualization purposes" />
-  <arg name="tf_frame_prefix" default="" />
+
+  <arg name="tf_frame_prefix"
+    default=""
+    description="The prefix added to each published TF frame id" />
 
   <include if="$(var spawn_state_publisher)"
     file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
@@ -49,6 +53,7 @@
       pkg="v4l2_camera"
       plugin="v4l2_camera::V4L2Camera">
       <param from="$(find-pkg-share leo_bringup)/config/v4l2_camera.yaml" />
+      <param name="camera_frame_id" value="$(var tf_frame_prefix)camera_optical_frame" />
       <extra_arg name="use_intra_process_comms" value="true" />
     </composable_node>
     <composable_node namespace="camera"
