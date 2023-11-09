@@ -110,11 +110,7 @@ class ParameterBridge(Node):
         )
 
         with open(default_params_file, "r", encoding="utf-8") as file:
-            try:
-                self.default_params: dict = yaml.safe_load(file)
-            except yaml.YAMLError as exc:
-                self.get_logger().error(exc)
-                raise
+            self.default_params: dict = yaml.safe_load(file)
 
     def load_override_params(self) -> None:
         override_params_file: str = (
@@ -124,12 +120,12 @@ class ParameterBridge(Node):
         )
 
         if override_params_file != "":
-            with open(override_params_file, "r", encoding="utf-8") as file:
-                try:
+            try:
+                with open(override_params_file, "r", encoding="utf-8") as file:
                     self.override_params: dict = yaml.safe_load(file)
-                except yaml.YAMLError as exc:
-                    self.get_logger().error(exc)
-                    raise
+            except (FileNotFoundError, PermissionError, yaml.YAMLError) as exc:
+                self.get_logger().error("Failed to load parameter overrides!")
+                self.get_logger().error(str(exc))
         else:
             self.override_params = {}
             self.get_logger().warning("Path to file with override parameters is empty.")
