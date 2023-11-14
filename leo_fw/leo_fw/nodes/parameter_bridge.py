@@ -119,15 +119,18 @@ class ParameterBridge(Node):
             .string_value
         )
 
+        self.override_params = {}
+
         if override_params_file != "":
             try:
                 with open(override_params_file, "r", encoding="utf-8") as file:
-                    self.override_params: dict = yaml.safe_load(file)
+                    override_yaml = yaml.safe_load(file)
+                    if isinstance(override_yaml, dict):
+                        self.override_params = override_yaml
             except (FileNotFoundError, PermissionError, yaml.YAMLError) as exc:
                 self.get_logger().error("Failed to load parameter overrides!")
                 self.get_logger().error(str(exc))
         else:
-            self.override_params = {}
             self.get_logger().warning("Path to file with override parameters is empty.")
 
     def parse_firmware_parameters(self) -> list[ParameterMsg]:
