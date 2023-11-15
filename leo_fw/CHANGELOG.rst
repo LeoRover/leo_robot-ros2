@@ -2,6 +2,19 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update firmware binaries
+* Move ImuCalibrator node into leo_fw package (`#8 <https://github.com/LeoRover/leo_robot-ros2/issues/8>`_)
+* Add firmware parameter bridge (`#4 <https://github.com/LeoRover/leo_robot-ros2/issues/4>`_)
+* Sort dependencies in package.xml
+* Update copyright notices in source files
+* Use ament cmake tests via colcon (`#7 <https://github.com/LeoRover/leo_robot-ros2/issues/7>`_)
+* Mecanum Wheel Odometry in firmware_message_converter (`#5 <https://github.com/LeoRover/leo_robot-ros2/issues/5>`_)
+* Reformat code
+* Remove redundant imports from calibrate_imu script
+* Contributors: Aleksander Szymański, Błażej Sowa
+
 1.3.0 (2023-01-11)
 ------------------
 * Show which wheels failed when testing encoders or torque sensors
