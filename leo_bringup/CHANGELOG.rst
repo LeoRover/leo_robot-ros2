@@ -2,8 +2,8 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.0 (2023-11-15)
+------------------
 * Add firmware parameter bridge (`#4 <https://github.com/LeoRover/leo_robot-ros2/issues/4>`_)
 * Update mecanum_wheels description
 * Use tf_frame_prefix for camera frame

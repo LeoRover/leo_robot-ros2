@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.0 (2023-11-15)
+------------------
 * Update firmware binaries
 * Move ImuCalibrator node into leo_fw package (`#8 <https://github.com/LeoRover/leo_robot-ros2/issues/8>`_)
 * Add firmware parameter bridge (`#4 <https://github.com/LeoRover/leo_robot-ros2/issues/4>`_)
