@@ -22,6 +22,7 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>python3-dbus</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-whichcraft</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>rclpy</exec_depend>
