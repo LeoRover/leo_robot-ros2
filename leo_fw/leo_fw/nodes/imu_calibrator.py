@@ -76,8 +76,8 @@ class ImuCalibrator(Node):
         req = SetImuCalibration.Request()
         req.gyro_bias_x, req.gyro_bias_y, req.gyro_bias_z = bias
 
-        self.future = self.service_client.call_async(req)
-        rclpy.spin_until_future_complete(self, self.future)
+        future = self.service_client.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
 
-        if not self.future.result().success:
-            self.get_logger().error(f"Failed to set new imu calibration.")
+        if not future.result().success:
+            self.get_logger().error("Failed to set new imu calibration.")
