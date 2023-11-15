@@ -31,7 +31,7 @@ from leo_msgs.msg import Imu
 
 class ImuCalibrator(Node):
     def __init__(self, time=2.0):
-        super().__init__("calibrate_imu")
+        super().__init__("imu_calibrator")
 
         self.service_client = self.create_client(
             SetImuCalibration, "set_imu_calibration"
