@@ -4,13 +4,11 @@
     default="true"
     description="Whether to start the robot_state_publisher node" />
 
-  <arg
-    name="model"
+  <arg name="model"
     default="$(find-pkg-share leo_description)/urdf/leo.urdf.xacro"
     description="Absolute path to robot urdf.xacro file" />
 
-  <arg
-    name="mecanum_wheels"
+  <arg name="mecanum_wheels"
     default="false"
     description="Flag specifying wheel types of the robot" />
 
@@ -18,10 +16,14 @@
     default=""
     description="The prefix added to each published TF frame id" />
 
+  <arg name="firmware_override_params_file"
+    default=""
+    description="Absolute path to the yaml file with firmware parameters to be overrided" />
+
   <include if="$(var spawn_state_publisher)"
     file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
     <arg name="model" value="$(var model)" />
-    <arg name="mecanum_wheels" value="$(var mecanum_wheels)"/>
+    <arg name="mecanum_wheels" value="$(var mecanum_wheels)" />
   </include>
 
   <node pkg="web_video_server"
@@ -42,6 +44,16 @@
   <node pkg="leo_fw" exec="firmware_message_converter">
     <param name="tf_frame_prefix" value="$(var tf_frame_prefix)" />
     <param from="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
+  </node>
+
+  <let if="$(var mecanum_wheels)" name="firmware_default_params_file"
+    value="$(find-pkg-share leo_bringup)/config/firmware_mecanum_params.yaml" />
+  <let unless="$(var mecanum_wheels)" name="firmware_default_params_file"
+    value="$(find-pkg-share leo_bringup)/config/firmware_diff_drive_params.yaml" />
+
+  <node pkg="leo_fw" exec="firmware_parameter_bridge">
+    <param name="default_params_file_path" value="$(var firmware_default_params_file)" />
+    <param name="override_params_file_path" value="$(var firmware_override_params_file)" />
   </node>
 
   <node_container namespace=""

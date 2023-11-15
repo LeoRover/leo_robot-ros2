@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+from leo_fw.nodes import ParameterBridge
+
+import rclpy
+from rclpy.executors import MultiThreadedExecutor
+
+rclpy.init()
+
+executor = MultiThreadedExecutor(num_threads=4)
+
+param_bridge = ParameterBridge(executor)
+
+executor.add_node(param_bridge)
+executor.spin()
+
+param_bridge.get_logger().info("Finishing node.")
+param_bridge.destroy_node()
+rclpy.shutdown()
