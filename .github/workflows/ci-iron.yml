@@ -1,16 +1,16 @@
-name: CI-Humble
+name: CI-Iron
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - humble
+      - iron
   pull_request:
     branches:
-      - humble
+      - iron
 
 env:
- ROS_DISTRO: humble
+ ROS_DISTRO: iron
 
 jobs:
   industrial_ci:
@@ -26,6 +26,6 @@ jobs:
       - name: Source tests
         uses: "ros-industrial/industrial_ci@master"
         env:
-          UPSTREAM_WORKSPACE: "github:LeoRover/leo_common-ros2#humble"
+          UPSTREAM_WORKSPACE: "github:LeoRover/leo_common-ros2#iron"
           PYLINT_CHECK: true
           PYLINT_ARGS: "--rcfile=src/leo_robot-ros2/.pylintrc"
