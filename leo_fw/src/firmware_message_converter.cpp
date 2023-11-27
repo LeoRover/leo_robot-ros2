@@ -28,6 +28,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "std_srvs/srv/trigger.hpp"
 
 #include "leo_msgs/msg/imu.hpp"
 #include "leo_msgs/msg/wheel_odom.hpp"
@@ -39,6 +40,7 @@
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
+using std::placeholders::_2;
 
 namespace leo_fw
 {
@@ -57,6 +59,13 @@ public:
         &FirmwareMessageConverter::set_imu_calibration_callback, this,
         std::placeholders::_1, std::placeholders::_2));
 
+    reset_odometry_client = create_client<std_srvs::srv::Trigger>("firmware/reset_odometry");
+
+    reset_odometry_service = create_service<std_srvs::srv::Trigger>(
+      "reset_odometry",
+      std::bind(
+        &FirmwareMessageConverter::reset_odometry_callback, this, std::placeholders::_1,
+        std::placeholders::_2));
 
     robot_frame_id_ = declare_parameter("robot_frame_id", robot_frame_id_);
     odom_frame_id_ = declare_parameter("odom_frame_id", odom_frame_id_);
@@ -107,6 +116,8 @@ private:
     wheel_odom.pose.pose.orientation.z = std::sin(msg->pose_yaw * 0.5F);
     wheel_odom.pose.pose.orientation.w = std::cos(msg->pose_yaw * 0.5F);
 
+    velocity_linear_x = msg->velocity_lin;
+
     for (int i = 0; i < 6; i++) {
       wheel_odom.twist.covariance[i * 7] =
         wheel_odom_twist_covariance_diagonal_[i];
@@ -129,6 +140,9 @@ private:
     wheel_odom.pose.pose.orientation.z = std::sin(msg->pose_yaw * 0.5F);
     wheel_odom.pose.pose.orientation.w = std::cos(msg->pose_yaw * 0.5F);
 
+    velocity_linear_x = msg->velocity_lin_x;
+    velocity_linear_y = msg->velocity_lin_y;
+
     for (int i = 0; i < 6; i++) {
       wheel_odom.twist.covariance[i * 7] =
         wheel_odom_mecanum_twist_covariance_diagonal_[i];
@@ -149,6 +163,8 @@ private:
     imu.linear_acceleration.y = msg->accel_y;
     imu.linear_acceleration.z = msg->accel_z;
 
+    velocity_angular_z = imu.angular_velocity.z;
+
     for (int i = 0; i < 3; i++) {
       imu.angular_velocity_covariance[i * 4] =
         imu_angular_velocity_covariance_diagonal_[i];
@@ -157,6 +173,52 @@ private:
     }
 
     imu_pub_->publish(imu);
+  }
+
+  void merged_odometry_callback() const
+  {
+    nav_msgs::msg::Odometry merged_odom;
+    merged_odom.header.frame_id = odom_frame_id_;
+    merged_odom.child_frame_id = tf_frame_prefix_ + robot_frame_id_;
+    merged_odom.header.stamp = now();
+    merged_odom.twist.twist.linear.x = velocity_linear_x;
+    merged_odom.twist.twist.linear.y = velocity_linear_y;
+    merged_odom.twist.twist.angular.z = velocity_angular_z;
+
+    double move_x = velocity_linear_x * std::cos(odom_merged_yaw) - velocity_linear_y * std::sin(
+      odom_merged_yaw);
+    double move_y = velocity_linear_x * std::sin(odom_merged_yaw) + velocity_linear_y * std::cos(
+      odom_merged_yaw);
+
+    odom_merged_position.x += move_x * 0.01;
+    odom_merged_position.y += move_y * 0.01;
+
+    odom_merged_yaw += velocity_angular_z * 0.01;
+
+    if (odom_merged_yaw > 2.0 * PI) {
+      odom_merged_yaw -= 2.0 * PI;
+    } else if (odom_merged_yaw < 0.0) {
+      odom_merged_yaw += 2.0 * PI;
+    }
+
+    merged_odom.pose.pose.position.x = odom_merged_position.x;
+    merged_odom.pose.pose.position.y = odom_merged_position.y;
+    merged_odom.pose.pose.orientation.z = std::sin(odom_merged_yaw * 0.5F);
+    merged_odom.pose.pose.orientation.w = std::cos(odom_merged_yaw * 0.5F);
+
+    const std::vector<double> * merged_covariance;
+    if (wheel_odom_mecanum_pub_) {
+      merged_covariance = &wheel_odom_mecanum_twist_covariance_diagonal_;
+    } else {
+      merged_covariance = &wheel_odom_twist_covariance_diagonal_;
+    }
+
+    for (int i = 0; i < 5; i++) {
+      merged_odom.twist.covariance[i * 7] = (*merged_covariance)[i];
+    }
+    merged_odom.twist.covariance[35] = imu_angular_velocity_covariance_diagonal_[2];
+
+    odom_merged_pub_->publish(merged_odom);
   }
 
   void set_imu_calibration_callback(
@@ -175,6 +237,28 @@ private:
     fout << node;
 
     response->success = true;
+  }
+
+  void reset_odometry_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+  {
+    odom_merged_position.x = 0.0;
+    odom_merged_position.y = 0.0;
+    odom_merged_yaw = 0.0;
+
+    auto reset_request = std_srvs::srv::Trigger_Request::SharedPtr();
+
+    auto result = reset_odometry_client->async_send_request(reset_request);
+
+    if (rclcpp::spin_until_future_complete(
+        this->get_node_base_interface(),
+        result) != rclcpp::FutureReturnCode::SUCCESS)
+    {
+      res->success = false;
+    } else {
+      res->success = true;
+    }
   }
 
   void load_yaml_bias()
@@ -249,9 +333,11 @@ private:
     if (wheel_odom_pub_ && wheel_odom_publishers == 0) {
       RCLCPP_INFO(
         get_logger(), "firmware/wheel_odom topic no longer has any publishers. "
-        "Shutting down wheel_odom_with_covariance publisher.");
+        "Shutting down wheel_odom_with_covariance and odometry_merged publishers.");
       wheel_odom_sub_.reset();
       wheel_odom_pub_.reset();
+      odom_merged_pub_.reset();
+      odom_merged_timer_->cancel();
     }
 
     if (!wheel_odom_pub_ && wheel_odom_publishers > 0) {
@@ -270,9 +356,11 @@ private:
       RCLCPP_INFO(
         get_logger(),
         "firmware/wheel_odom_mecanum topic no longer has any publishers. "
-        "Shutting down wheel_odom_with_covariance publisher.");
+        "Shutting down wheel_odom_with_covariance and odometry_merged publishers.");
       wheel_odom_mecanum_sub_.reset();
       wheel_odom_mecanum_pub_.reset();
+      odom_merged_pub_.reset();
+      odom_merged_timer_->cancel();
     }
 
     if (!wheel_odom_mecanum_pub_ && wheel_odom_mecanum_publishers > 0) {
@@ -295,9 +383,11 @@ private:
     if (imu_pub_ && imu_publishers == 0) {
       RCLCPP_INFO(
         get_logger(), "firmware/imu topic no longer has any publishers. "
-        "Shutting down imu/data_raw publisher.");
+        "Shutting down imu/data_raw and odometry_merged publishers.");
       imu_sub_.reset();
       imu_pub_.reset();
+      odom_merged_pub_.reset();
+      odom_merged_timer_->cancel();
     }
 
     if (!imu_pub_ && imu_publishers > 0) {
@@ -309,7 +399,27 @@ private:
         imu_topic_, rclcpp::QoS(5).best_effort(),
         std::bind(&FirmwareMessageConverter::imu_callback, this, _1));
     }
+
+    if (imu_pub_ && (wheel_odom_mecanum_pub_ || wheel_odom_pub_) && !odom_merged_pub_) {
+      RCLCPP_INFO(
+        get_logger(), "Both firmware/imu and (firmware/wheel_odom or "
+        "firmware/wheel_odom_mecanum) topics are advertised. "
+        "Advertising odometry_merged topic.");
+      odom_merged_pub_ = create_publisher<nav_msgs::msg::Odometry>("odometry_merged", 10);
+      odom_merged_timer_ =
+        create_wall_timer(
+        100ms,
+        std::bind(&FirmwareMessageConverter::merged_odometry_callback, this));
+    }
   }
+
+  // Merged Odom variables
+  static constexpr double PI = 3.141592653;
+  mutable double velocity_linear_x;
+  mutable double velocity_linear_y;
+  mutable double velocity_angular_z;
+  mutable double odom_merged_yaw;
+  mutable geometry_msgs::msg::Point odom_merged_position;
 
   // Parameters
   std::string robot_frame_id_ = "base_link";
@@ -335,13 +445,15 @@ private:
   std::string wheel_odom_mecanum_topic_;
   std::string imu_topic_;
 
-  // Timer
+  // Timers
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr odom_merged_timer_;
 
   // Publishers
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr wheel_odom_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr wheel_odom_mecanum_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_merged_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 
   // Subscriptions
@@ -350,8 +462,12 @@ private:
   rclcpp::Subscription<leo_msgs::msg::WheelOdomMecanum>::SharedPtr wheel_odom_mecanum_sub_;
   rclcpp::Subscription<leo_msgs::msg::Imu>::SharedPtr imu_sub_;
 
-  // Service
+  // Services
   rclcpp::Service<leo_msgs::srv::SetImuCalibration>::SharedPtr set_imu_calibration_service;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_odometry_service;
+
+  // Clients
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr reset_odometry_client;
 };
 
 }  // namespace leo_fw
