@@ -7,6 +7,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(leo_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
@@ -26,6 +27,7 @@ ament_target_dependencies(leo_fw
   sensor_msgs
   leo_msgs
   nav_msgs
+  std_srvs
 )
 rclcpp_components_register_node(leo_fw
   PLUGIN "leo_fw::FirmwareMessageConverter"
