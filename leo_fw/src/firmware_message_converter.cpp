@@ -243,6 +243,7 @@ private:
     const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
     std::shared_ptr<std_srvs::srv::Trigger::Response> res)
   {
+    constexpr std::chrono::seconds callback_timeout = std::chrono::seconds(3);
     odom_merged_position.x = 0.0;
     odom_merged_position.y = 0.0;
     odom_merged_yaw = 0.0;
@@ -251,9 +252,9 @@ private:
 
     auto result = reset_odometry_client->async_send_request(reset_request);
 
-    if (rclcpp::spin_until_future_complete(
-        this->get_node_base_interface(),
-        result) != rclcpp::FutureReturnCode::SUCCESS)
+    auto result_status = result.wait_for(callback_timeout);
+
+    if (result_status == std::future_status::ready)
     {
       res->success = false;
     } else {
