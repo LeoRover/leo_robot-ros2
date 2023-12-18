@@ -247,7 +247,7 @@ private:
     odom_merged_position.y = 0.0;
     odom_merged_yaw = 0.0;
 
-    auto reset_request = std_srvs::srv::Trigger_Request::SharedPtr();
+    auto reset_request = std::make_shared<std_srvs::srv::Trigger_Request>();
 
     auto result = reset_odometry_client->async_send_request(reset_request);
 
