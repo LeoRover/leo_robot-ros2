@@ -257,9 +257,9 @@ private:
     auto result_status = result.wait_for(callback_timeout);
 
     if (result_status == std::future_status::ready) {
-      res->success = false;
-    } else {
       res->success = true;
+    } else {
+      res->success = false;
     }
   }
 
