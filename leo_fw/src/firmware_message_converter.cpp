@@ -103,7 +103,7 @@ private:
     joint_states_pub_->publish(joint_states);
   }
 
-  void wheel_odom_callback(const leo_msgs::msg::WheelOdom::SharedPtr msg) const
+  void wheel_odom_callback(const leo_msgs::msg::WheelOdom::SharedPtr msg)
   {
     nav_msgs::msg::Odometry wheel_odom;
     wheel_odom.header.frame_id = odom_frame_id_;
@@ -126,7 +126,7 @@ private:
     wheel_odom_pub_->publish(wheel_odom);
   }
 
-  void mecanum_odom_callback(const leo_msgs::msg::WheelOdomMecanum::SharedPtr msg) const
+  void mecanum_odom_callback(const leo_msgs::msg::WheelOdomMecanum::SharedPtr msg)
   {
     nav_msgs::msg::Odometry wheel_odom;
     wheel_odom.header.frame_id = odom_frame_id_;
@@ -151,7 +151,7 @@ private:
     wheel_odom_mecanum_pub_->publish(wheel_odom);
   }
 
-  void imu_callback(const leo_msgs::msg::Imu::SharedPtr msg) const
+  void imu_callback(const leo_msgs::msg::Imu::SharedPtr msg)
   {
     sensor_msgs::msg::Imu imu;
     imu.header.frame_id = tf_frame_prefix_ + imu_frame_id_;
@@ -175,7 +175,7 @@ private:
     imu_pub_->publish(imu);
   }
 
-  void merged_odometry_callback() const
+  void merged_odometry_callback()
   {
     nav_msgs::msg::Odometry merged_odom;
     merged_odom.header.frame_id = odom_frame_id_;
@@ -415,11 +415,11 @@ private:
 
   // Merged Odom variables
   static constexpr double PI = 3.141592653;
-  mutable double velocity_linear_x;
-  mutable double velocity_linear_y;
-  mutable double velocity_angular_z;
-  mutable double odom_merged_yaw;
-  mutable geometry_msgs::msg::Point odom_merged_position;
+  double velocity_linear_x;
+  double velocity_linear_y;
+  double velocity_angular_z;
+  double odom_merged_yaw;
+  geometry_msgs::msg::Point odom_merged_position;
 
   // Parameters
   std::string robot_frame_id_ = "base_link";
