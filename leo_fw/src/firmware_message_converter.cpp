@@ -409,7 +409,7 @@ private:
       odom_merged_pub_ = create_publisher<nav_msgs::msg::Odometry>("odometry_merged", 10);
       odom_merged_timer_ =
         create_wall_timer(
-        100ms,
+        10ms,
         std::bind(&FirmwareMessageConverter::merged_odometry_callback, this));
     }
   }
