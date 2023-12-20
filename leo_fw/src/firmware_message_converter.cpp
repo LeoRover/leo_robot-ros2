@@ -42,6 +42,8 @@ using namespace std::chrono_literals;
 using std::placeholders::_1;
 using std::placeholders::_2;
 
+constexpr double PI = 3.141592653;
+
 namespace leo_fw
 {
 
@@ -414,7 +416,6 @@ private:
   }
 
   // Merged Odom variables
-  static constexpr double PI = 3.141592653;
   double velocity_linear_x;
   double velocity_linear_y;
   double velocity_angular_z;
