@@ -32,6 +32,7 @@ ament_target_dependencies(leo_fw
 rclcpp_components_register_node(leo_fw
   PLUGIN "leo_fw::FirmwareMessageConverter"
   EXECUTABLE "firmware_message_converter"
+  EXECUTOR "MultiThreadedExecutor"
 )
 
 ament_python_install_package(${PROJECT_NAME})

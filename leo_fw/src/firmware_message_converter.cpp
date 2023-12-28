@@ -61,7 +61,8 @@ public:
         &FirmwareMessageConverter::set_imu_calibration_callback, this,
         std::placeholders::_1, std::placeholders::_2));
 
-    reset_odometry_client = create_client<std_srvs::srv::Trigger>("firmware/reset_odometry");
+    auto client_cb_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    reset_odometry_client = create_client<std_srvs::srv::Trigger>("firmware/reset_odometry", rmw_qos_profile_services_default, client_cb_group_);
 
     reset_odometry_service = create_service<std_srvs::srv::Trigger>(
       "reset_odometry",
@@ -252,13 +253,15 @@ private:
 
     auto reset_request = std::make_shared<std_srvs::srv::Trigger_Request>();
 
-    auto result = reset_odometry_client->async_send_request(reset_request);
+    auto future = reset_odometry_client->async_send_request(reset_request);
 
-    auto result_status = result.wait_for(callback_timeout);
+    auto result_status = future.wait_for(callback_timeout);
 
-    if (result_status == std::future_status::ready) {
-      res->success = true;
+    if (future.valid()) {
+      res->success = future.get()->success;
     } else {
+      if(result_status == std::future_status::timeout)
+        res->message = "Firmware service timeout";
       res->success = false;
     }
   }
