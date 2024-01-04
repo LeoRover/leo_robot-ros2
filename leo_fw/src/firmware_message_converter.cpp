@@ -61,10 +61,13 @@ public:
         &FirmwareMessageConverter::set_imu_calibration_callback, this,
         std::placeholders::_1, std::placeholders::_2));
 
-    auto client_cb_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-    reset_odometry_client = create_client<std_srvs::srv::Trigger>("firmware/reset_odometry", rmw_qos_profile_services_default, client_cb_group_);
+    client_cb_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    reset_odometry_client_ = create_client<std_srvs::srv::Trigger>(
+      "firmware/reset_odometry",
+      rmw_qos_profile_services_default,
+      client_cb_group_);
 
-    reset_odometry_service = create_service<std_srvs::srv::Trigger>(
+    reset_odometry_service_ = create_service<std_srvs::srv::Trigger>(
       "reset_odometry",
       std::bind(
         &FirmwareMessageConverter::reset_odometry_callback, this, std::placeholders::_1,
@@ -247,22 +250,29 @@ private:
     std::shared_ptr<std_srvs::srv::Trigger::Response> res)
   {
     constexpr std::chrono::seconds callback_timeout = std::chrono::seconds(3);
+
     odom_merged_position.x = 0.0;
     odom_merged_position.y = 0.0;
     odom_merged_yaw = 0.0;
 
     auto reset_request = std::make_shared<std_srvs::srv::Trigger_Request>();
-
-    auto future = reset_odometry_client->async_send_request(reset_request);
-
+    auto future = reset_odometry_client_->async_send_request(reset_request);
     auto result_status = future.wait_for(callback_timeout);
 
-    if (future.valid()) {
-      res->success = future.get()->success;
-    } else {
-      if(result_status == std::future_status::timeout)
-        res->message = "Firmware service timeout";
+    if (result_status == std::future_status::ready) {
+      if (future.get()->success) {
+        res->success = true;
+        res->message = "Odometry reset successful.";
+      } else {
+        res->success = false;
+        res->message = "Failed to reset odometry.";
+      }
+    } else if (result_status == std::future_status::timeout) {
       res->success = false;
+      res->message = "Firmware service timeout.";
+    } else {
+      res->success = false;
+      res->message = "Firmware service call deffered.";
     }
   }
 
@@ -468,10 +478,13 @@ private:
 
   // Services
   rclcpp::Service<leo_msgs::srv::SetImuCalibration>::SharedPtr set_imu_calibration_service;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_odometry_service;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_odometry_service_;
 
   // Clients
-  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr reset_odometry_client;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr reset_odometry_client_;
+
+  // Callback Groups
+  rclcpp::CallbackGroup::SharedPtr client_cb_group_
 };
 
 }  // namespace leo_fw
