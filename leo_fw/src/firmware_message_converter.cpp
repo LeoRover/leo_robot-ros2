@@ -484,7 +484,7 @@ private:
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr reset_odometry_client_;
 
   // Callback Groups
-  rclcpp::CallbackGroup::SharedPtr client_cb_group_
+  rclcpp::CallbackGroup::SharedPtr client_cb_group_;
 };
 
 }  // namespace leo_fw
