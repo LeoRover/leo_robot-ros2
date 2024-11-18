@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.0 (2024-11-18)
+------------------
 * Update firmware binaries (`#11 <https://github.com/LeoRover/leo_robot-ros2/issues/11>`_)
 * Add merged odometry to firmware message converter (`#9 <https://github.com/LeoRover/leo_robot-ros2/issues/9>`_)
 * Contributors: Aleksander Szymański, Błażej Sowa
