@@ -206,12 +206,16 @@ class ParameterBridge(Node):
         param_request.parameters = self.parse_firmware_parameters()
         future = self.firmware_parameter_service_client.call_async(param_request)
 
+        assert self.executor is not None
         self.executor.spin_until_future_complete(future, 5.0)
 
-        if future.result():
+        set_params_response: SetParameters.Response | None = future.result()
+        if set_params_response is not None:
             result: SetParametersResult
             param: ParameterMsg
-            for result, param in zip(future.result().results, param_request.parameters):
+            for result, param in zip(
+                set_params_response.results, param_request.parameters
+            ):
                 if not result.successful:
                     self.get_logger().warning(
                         f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
@@ -234,6 +238,7 @@ class ParameterBridge(Node):
         boot_request = Trigger.Request()
         boot_future = self.frimware_boot_service_client.call_async(boot_request)
 
+        assert self.executor is not None
         self.executor.spin_until_future_complete(boot_future, 5.0)
 
         if boot_future.result():
