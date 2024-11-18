@@ -99,7 +99,7 @@ def query_yes_no(question: str, default: str = "yes") -> bool:
             return valid[default]
         if choice in valid:
             return valid[choice]
-        print("Please respond with 'yes' or 'no' " "(or 'y' or 'n').")
+        print("Please respond with 'yes' or 'no' (or 'y' or 'n').")
 
 
 def prompt_options(options: list[tuple[str, T]], default: int = 1) -> T:
