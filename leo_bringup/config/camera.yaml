@@ -1,0 +1,9 @@
+/**:
+  ros__parameters:
+    camera: 0
+    width: 1024
+    height: 768
+    format: "BGR888"
+    role: "video"
+    camera_info_url: "package://leo_bringup/camera_info/leo_camera.yaml"
+

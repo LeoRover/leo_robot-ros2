@@ -6,6 +6,7 @@ find_package(ament_cmake REQUIRED)
 install(
   DIRECTORY
     camera_info
+    camera_tuning_files
     config
     launch
   DESTINATION share/${PROJECT_NAME}
