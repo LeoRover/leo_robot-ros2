@@ -37,6 +37,7 @@
   <exec_depend>leo_fw</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_black</test_depend>
   <test_depend>ament_cmake_lint_cmake</test_depend>
   <test_depend>ament_cmake_xmllint</test_depend>
 

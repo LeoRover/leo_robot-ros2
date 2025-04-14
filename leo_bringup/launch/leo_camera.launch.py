@@ -6,6 +6,7 @@ from launch_ros.descriptions import ComposableNode
 from launch.actions import SetEnvironmentVariable
 from ament_index_python.packages import get_package_share_directory
 
+
 def get_rpi_model():
     try:
         with open("/proc/device-tree/model", "r") as f:
@@ -18,18 +19,23 @@ def get_rpi_model():
         print(f"Failed to read Raspberry Pi model: {e}")
     return -1
 
+
 def generate_launch_description():
     rpi_model = get_rpi_model()
     tuning_file = ""
 
     if rpi_model == 5:
         tuning_file = os.path.join(
-            get_package_share_directory("leo_bringup"), "camera_tuning_files", "Arducam-477M-Pi5.json"
+            get_package_share_directory("leo_bringup"),
+            "camera_tuning_files",
+            "Arducam-477M-Pi5.json",
         )
     elif rpi_model == 4:
-        #TODO: change this to use correct tuning file for Pi 4 camera
+        # TODO: change this to use correct tuning file for Pi 4 camera
         tuning_file = os.path.join(
-            get_package_share_directory("leo_bringup"), "camera_tuning_files", "Arducam-477M-Pi4.json"
+            get_package_share_directory("leo_bringup"),
+            "camera_tuning_files",
+            "Arducam-477M-Pi4.json",
         )
 
     config_path = os.path.join(
@@ -79,8 +85,10 @@ def generate_launch_description():
         ],
         output="screen",
     )
-    
-    return LaunchDescription([
-        SetEnvironmentVariable("LIBCAMERA_RPI_TUNING_FILE", tuning_file),
-        container,
-    ])
+
+    return LaunchDescription(
+        [
+            SetEnvironmentVariable("LIBCAMERA_RPI_TUNING_FILE", tuning_file),
+            container,
+        ]
+    )
