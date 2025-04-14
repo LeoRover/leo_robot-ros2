@@ -36,7 +36,7 @@ def generate_launch_description():
     )
 
     container = ComposableNodeContainer(
-        name="image_container",
+        name="camera_container",
         namespace="",
         package="rclcpp_components",
         executable="component_container_isolated",
