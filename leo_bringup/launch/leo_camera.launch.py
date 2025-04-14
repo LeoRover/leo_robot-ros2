@@ -44,8 +44,8 @@ def generate_launch_description():
         composable_node_descriptions=[
             ComposableNode(
                 name="camera",
-                package="leo_camera_ros",
-                plugin="camera::CameraNode",
+                package="leo_camera",
+                plugin="leo_camera::CameraNode",
                 parameters=[config_path],
                 extra_arguments=[{"use_intra_process_comms": True}],
             ),
