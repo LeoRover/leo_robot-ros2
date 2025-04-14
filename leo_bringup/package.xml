@@ -26,7 +26,6 @@
   <exec_depend>rosapi</exec_depend>
   <exec_depend>rosbridge_server</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>v4l2_camera</exec_depend>
   <exec_depend>web_video_server</exec_depend>
   <exec_depend>xacro</exec_depend>
 
