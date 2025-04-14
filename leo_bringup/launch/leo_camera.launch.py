@@ -53,6 +53,7 @@ def generate_launch_description():
                 name="debayer",
                 package="image_proc",
                 plugin="image_proc::DebayerNode",
+                parameters=[config_path],
                 extra_arguments=[{"use_intra_process_comms": True}],
             ),
             ComposableNode(
@@ -60,6 +61,7 @@ def generate_launch_description():
                 name="rectify_mono",
                 package="image_proc",
                 plugin="image_proc::RectifyNode",
+                parameters=[config_path],
                 extra_arguments=[{"use_intra_process_comms": True}],
                 remappings=[("image", "image_mono")],
             ),
@@ -68,6 +70,7 @@ def generate_launch_description():
                 name="rectify_color",
                 package="image_proc",
                 plugin="image_proc::RectifyNode",
+                parameters=[config_path],
                 extra_arguments=[{"use_intra_process_comms": True}],
                 remappings=[
                     ("image", "image_color"),
