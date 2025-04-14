@@ -1,21 +1,21 @@
 import os
 
-from launch import LaunchDescription
-from launch_ros.actions import Node, ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
-from launch.actions import SetEnvironmentVariable
 from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import SetEnvironmentVariable
+from launch_ros.actions import ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
 
 
 def get_rpi_model():
     try:
-        with open("/proc/device-tree/model", "r") as f:
+        with open("/proc/device-tree/model", "r", encoding="utf-8") as f:
             model = f.read().strip()
         if "Raspberry Pi 5" in model:
             return 5
-        elif "Raspberry Pi 4" in model:
+        if "Raspberry Pi 4" in model:
             return 4
-    except Exception as e:
+    except (FileNotFoundError, IOError) as e:
         print(f"Failed to read Raspberry Pi model: {e}")
     return -1
 
@@ -29,13 +29,6 @@ def generate_launch_description():
             get_package_share_directory("leo_bringup"),
             "camera_tuning_files",
             "Arducam-477M-Pi5.json",
-        )
-    elif rpi_model == 4:
-        # TODO: change this to use correct tuning file for Pi 4 camera
-        tuning_file = os.path.join(
-            get_package_share_directory("leo_bringup"),
-            "camera_tuning_files",
-            "Arducam-477M-Pi4.json",
         )
 
     config_path = os.path.join(
