@@ -5,7 +5,7 @@
     height: 768
     format: BGR888
     role: video
-    camera_info_url: package://leo_bringup/camera_info/leo_camera.yaml
+    camera_info_url: package://leo_bringup/camera_info/leo_camera_imx477.yaml
 
     # 15 FPS
     FrameDurationLimits: [66666, 66666]

@@ -23,6 +23,7 @@ def get_rpi_model():
 def generate_launch_description():
     rpi_model = get_rpi_model()
     tuning_file = ""
+    config_path = ""
 
     if rpi_model == 5:
         tuning_file = os.path.join(
@@ -31,9 +32,14 @@ def generate_launch_description():
             "Arducam-477M-Pi5.json",
         )
 
-    config_path = os.path.join(
-        get_package_share_directory("leo_bringup"), "config", "leo_camera.yaml"
-    )
+        config_path = os.path.join(
+            get_package_share_directory("leo_bringup"), "config", "leo_camera_imx477.yaml"
+        )
+
+    if rpi_model == 4:
+        config_path = os.path.join(
+            get_package_share_directory("leo_bringup"), "config", "leo_camera_ov5647.yaml"
+        )
 
     container = ComposableNodeContainer(
         name="camera_container",
