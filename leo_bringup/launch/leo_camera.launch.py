@@ -33,12 +33,16 @@ def generate_launch_description():
         )
 
         config_path = os.path.join(
-            get_package_share_directory("leo_bringup"), "config", "leo_camera_imx477.yaml"
+            get_package_share_directory("leo_bringup"),
+            "config",
+            "leo_camera_imx477.yaml",
         )
 
     if rpi_model == 4:
         config_path = os.path.join(
-            get_package_share_directory("leo_bringup"), "config", "leo_camera_ov5647.yaml"
+            get_package_share_directory("leo_bringup"),
+            "config",
+            "leo_camera_ov5647.yaml",
         )
 
     container = ComposableNodeContainer(
