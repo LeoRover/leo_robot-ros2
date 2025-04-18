@@ -1,0 +1,25 @@
+odom_filter:
+  robot_frame_id:
+    type: string
+    default_value: "base_footprint"
+    description: "Name of the base robot frame in TF-tree."
+    read_only: false
+    validation:
+      not_empty<>: []
+  odom_frame_id:
+    type: string
+    default_value: "odom"
+    description: "Name of the odom frame in TF-tree."
+    read_only: false
+    validation:
+      not_empty<>: []
+  tf_frame_prefix:
+    type: string
+    default_value: ""
+    description: "Prefix of the TF frames."
+    read_only: false
+  publish_tf:
+    type: bool
+    default_value: true
+    description: "Flag specyfing whether transform from odom to robot frame should be published."
+    read_only: false

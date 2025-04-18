@@ -1,0 +1,47 @@
+imu_filter:
+  gain_acc:
+    type: double
+    default_value: 0.01
+    description: "Gain for the complementary filter, belongs in [0, 1]."
+    read_only: false
+    validation:
+      bounds<>: [0.0, 1.0]
+  bias_alpha:
+    type: double
+    default_value: 0.01
+    description: "Bias estimation gain, belongs in [0, 1]."
+    read_only: false
+    validation:
+      bounds<>: [0.0, 1.0]
+  do_bias_estimation:
+    type: bool
+    default_value: true
+    description: "Whether to do bias estimation of the angular velocity (gyroscope readings) or not."
+    read_only: false
+  do_adaptive_gain:
+    type: bool
+    default_value: true
+    description: "Whether to do adaptive gain or not."
+    read_only: false
+  constant_dt:
+    type: double
+    default_value: 0.0
+    description: "The dt to use; if 0.0 (default), compute dt dynamically from message headers."
+    read_only: false
+    validation:
+      gt_eq<>: 0.0
+  orientation_variance:
+    type: double
+    default_value: 0.001
+    description: "Value on the diagonal of orientation covariance matrix."
+    read_only: false
+    validation:
+      gt<>: 0.0
+  bias_save_period:
+    type: int
+    default_value: 5
+    description: "Time interval between current imu bias save (in minutes)."
+    read_only: false
+    validation:
+      bounds<>: [1, 10]
+  
