@@ -19,6 +19,5 @@
 # THE SOFTWARE.
 
 from .parameter_bridge import ParameterBridge
-from .imu_calibrator import ImuCalibrator
 
-__all__ = ["ParameterBridge", "ImuCalibrator"]
+__all__ = ["ParameterBridge"]
