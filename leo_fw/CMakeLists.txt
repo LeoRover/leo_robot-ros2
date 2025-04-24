@@ -8,7 +8,6 @@ find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(leo_msgs REQUIRED)
-find_package(yaml-cpp REQUIRED)
 
 include_directories(
   ${YAML_CPP_INCLUDE_DIRS}
@@ -20,7 +19,6 @@ add_library(leo_fw SHARED
 target_link_libraries(leo_fw
   rclcpp::rclcpp
   rclcpp_components::component
-  ${YAML_CPP_LIBRARIES}
 )
 ament_target_dependencies(leo_fw
   sensor_msgs
@@ -45,7 +43,6 @@ install(
     scripts/flash
     scripts/update
     scripts/test_hw
-    scripts/calibrate_imu
     scripts/firmware_parameter_bridge
   DESTINATION lib/${PROJECT_NAME}
 )
