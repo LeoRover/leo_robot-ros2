@@ -38,6 +38,7 @@ from rclpy.qos import (
     QoSProfile,
     QoSReliabilityPolicy,
 )
+from rclpy.client import Client
 
 from std_msgs.msg import Empty
 from std_srvs.srv import Trigger
@@ -70,13 +71,13 @@ class ParameterBridge(Node):
         self.load_override_params()
 
         cb_group = MutuallyExclusiveCallbackGroup()
-        self.firmware_parameter_service_client = self.create_client(
+        self.firmware_parameter_service_client: Client = self.create_client(
             SetParameters,
             "firmware/set_parameters",
             callback_group=cb_group,
         )
 
-        self.frimware_boot_service_client = self.create_client(
+        self.firmware_boot_service_client: Client = self.create_client(
             Trigger,
             "firmware/boot",
             callback_group=cb_group,
@@ -232,11 +233,11 @@ class ParameterBridge(Node):
     def trigger_boot(self) -> bool:
         self.get_logger().info("Trying to trigger firmware boot.")
 
-        if not self.frimware_boot_service_client.wait_for_service(timeout_sec=1.0):
+        if not self.firmware_boot_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().error("Firmware boot service not active!")
 
         boot_request = Trigger.Request()
-        boot_future = self.frimware_boot_service_client.call_async(boot_request)
+        boot_future = self.firmware_boot_service_client.call_async(boot_request)
 
         assert self.executor is not None
         self.executor.spin_until_future_complete(boot_future, 5.0)
