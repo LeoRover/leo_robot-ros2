@@ -2,14 +2,14 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>leo_filters</name>
-  <version>2.0.0</version>
-  <description> Binary releases of Leo Rover firmware and related utilities </description>
+  <version>1.0.0</version>
+  <description>Nodes for filtering and processing imu and wheel odom messages.</description>
 
   <maintainer email="support@fictionlab.pl">Fictionlab</maintainer>
 
   <license>MIT</license>
 
-  <url type="website">http://wiki.ros.org/leo_fw</url>
+  <url type="website">http://wiki.ros.org/leo_filters</url>
   <url type="bugtracker">https://github.com/LeoRover/leo_robot-ros2/issues</url>
   <url type="repository">https://github.com/LeoRover/leo_robot-ros2</url>
 
