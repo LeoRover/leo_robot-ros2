@@ -14,12 +14,12 @@ find_package(tf2_ros REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 generate_parameter_library(
-  imu_filter_parameters 
+  imu_filter_parameters
   src/imu_filter_parameters.yaml
 )
 
 generate_parameter_library(
-  odom_filter_parameters 
+  odom_filter_parameters
   src/odom_filter_parameters.yaml
 )
 
