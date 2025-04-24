@@ -24,6 +24,7 @@ from enum import Enum
 from typing import Optional
 
 import rclpy
+from rclpy.client import Client
 
 from std_srvs.srv import Trigger
 
@@ -46,7 +47,7 @@ def determine_board(node: rclpy.Node) -> Optional[BoardType]:
     if node.get_namespace() + "firmware/get_board_type" in [
         service[0] for service in services
     ]:
-        get_board_type = node.create_client(Trigger, "firmware/get_board_type")
+        get_board_type: Client = node.create_client(Trigger, "firmware/get_board_type")
         future = get_board_type.call_async(Trigger.Request())
         rclpy.spin_until_future_complete(node, future, timeout_sec=5.0)
         if future.done() and not future.exception():
@@ -71,7 +72,7 @@ def check_firmware_version(node: rclpy.Node) -> str:
     if node.get_namespace() + "firmware/get_firmware_version" in [
         service[0] for service in services
     ]:
-        get_firmware_version = node.create_client(
+        get_firmware_version: Client = node.create_client(
             Trigger, "firmware/get_firmware_version"
         )
         future = get_firmware_version.call_async(Trigger.Request())

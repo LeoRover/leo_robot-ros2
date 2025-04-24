@@ -38,6 +38,7 @@ from rclpy.qos import (
     QoSProfile,
     QoSReliabilityPolicy,
 )
+from rclpy.client import Client
 
 from std_msgs.msg import Empty
 from std_srvs.srv import Trigger
@@ -70,13 +71,13 @@ class ParameterBridge(Node):
         self.load_override_params()
 
         cb_group = MutuallyExclusiveCallbackGroup()
-        self.firmware_parameter_service_client = self.create_client(
+        self.firmware_parameter_service_client: Client = self.create_client(
             SetParameters,
             "firmware/set_parameters",
             callback_group=cb_group,
         )
 
-        self.firmware_boot_service_client = self.create_client(
+        self.firmware_boot_service_client: Client = self.create_client(
             Trigger,
             "firmware/boot",
             callback_group=cb_group,
