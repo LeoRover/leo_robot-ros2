@@ -29,43 +29,45 @@
 
 #include "leo_filters/imu_filter_parameters.hpp"
 
-namespace leo_filters {
+namespace leo_filters
+{
 
 class ImuFilter : public rclcpp::Node
 {
-  public:
-    explicit ImuFilter(rclcpp::NodeOptions options);
+public:
+  explicit ImuFilter(rclcpp::NodeOptions options);
 
-  private:
-    void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);  
-    std::string get_bias_file_path();
-    void load_bias();
-    void save_bias();
-    void check_dynamic_parameters();
-    void update_filter_params();
-    void publish(sensor_msgs::msg::Imu::SharedPtr);
-    tf2::Quaternion hamiltonToTFQuaternion(double q0, double q1, double q2,
-      double q3) const;
+private:
+  void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
+  std::string get_bias_file_path();
+  void load_bias();
+  void save_bias();
+  void check_dynamic_parameters();
+  void update_filter_params();
+  void publish(sensor_msgs::msg::Imu::SharedPtr);
+  tf2::Quaternion hamiltonToTFQuaternion(
+    double q0, double q1, double q2,
+    double q3) const;
 
-    // ROS entities
-    // Subscriptions
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
-    
-    // Publishers
-    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr rpy_pub_;
+  // ROS entities
+  // Subscriptions
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
 
-    // Timers
-    rclcpp::TimerBase::SharedPtr bias_save_timer_;
+  // Publishers
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr rpy_pub_;
 
-    // Parameters
-    imu_filter::ParamListener param_listener_;
-    imu_filter::Params params_;
-    
-    // State variables:
-    imu_tools::ComplementaryFilter filter_;
-    rclcpp::Time time_prev_;
-    bool initialized_filter_{};
+  // Timers
+  rclcpp::TimerBase::SharedPtr bias_save_timer_;
+
+  // Parameters
+  imu_filter::ParamListener param_listener_;
+  imu_filter::Params params_;
+
+  // State variables:
+  imu_tools::ComplementaryFilter filter_;
+  rclcpp::Time time_prev_;
+  bool initialized_filter_{};
 };
 
 }  // namespace leo_filters

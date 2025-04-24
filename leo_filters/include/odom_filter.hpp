@@ -29,10 +29,12 @@
 
 #include "leo_filters/odom_filter_parameters.hpp"
 
-namespace leo_filters {
+namespace leo_filters
+{
 
 constexpr double PI = 3.141592653;
-class OdomFilter : public rclcpp::Node {
+class OdomFilter : public rclcpp::Node
+{
 public:
   explicit OdomFilter(rclcpp::NodeOptions options);
 
@@ -40,8 +42,9 @@ private:
   void odom_merged_callback();
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
-  void reset_odom_callback(const std_srvs::srv::Trigger::Request::SharedPtr req,
-                           std_srvs::srv::Trigger::Response::SharedPtr res);
+  void reset_odom_callback(
+    const std_srvs::srv::Trigger::Request::SharedPtr req,
+    std_srvs::srv::Trigger::Response::SharedPtr res);
   void check_dynamic_parameters();
 
   // ROS entities

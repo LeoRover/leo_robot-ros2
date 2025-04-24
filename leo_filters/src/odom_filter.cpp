@@ -29,52 +29,55 @@ using namespace std::chrono_literals;
 using std::placeholders::_1;
 using std::placeholders::_2;
 
-namespace leo_filters {
+namespace leo_filters
+{
 OdomFilter::OdomFilter(rclcpp::NodeOptions options)
-    : Node("odom_filter", options),
-      param_listener_(get_node_parameters_interface()) {
+: Node("odom_filter", options),
+  param_listener_(get_node_parameters_interface())
+{
   params_ = param_listener_.get_params();
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-      "imu/data", rclcpp::QoS(5).best_effort(),
-      std::bind(&OdomFilter::imu_callback, this, _1));
+    "imu/data", rclcpp::QoS(5).best_effort(),
+    std::bind(&OdomFilter::imu_callback, this, _1));
   wheel_odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-      "wheel_odom_with_covariance", rclcpp::QoS(5).best_effort(),
-      std::bind(&OdomFilter::odom_callback, this, _1));
+    "wheel_odom_with_covariance", rclcpp::QoS(5).best_effort(),
+    std::bind(&OdomFilter::odom_callback, this, _1));
 
   broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
   client_cb_group_ =
-      create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   reset_odom_client_ = create_client<std_srvs::srv::Trigger>(
-      "firmware/reset_odometry", rmw_qos_profile_services_default,
-      client_cb_group_);
+    "firmware/reset_odometry", rmw_qos_profile_services_default,
+    client_cb_group_);
   reset_odom_srv_ = create_service<std_srvs::srv::Trigger>(
-      "reset_odometry",
-      std::bind(&OdomFilter::reset_odom_callback, this, _1, _2));
+    "reset_odometry",
+    std::bind(&OdomFilter::reset_odom_callback, this, _1, _2));
 
   odom_merged_pub_ =
-      create_publisher<nav_msgs::msg::Odometry>("merged_odom", 10);
+    create_publisher<nav_msgs::msg::Odometry>("merged_odom", 10);
 
   odom_merged_timer_ = create_wall_timer(
-      10ms, std::bind(&OdomFilter::odom_merged_callback, this));
+    10ms, std::bind(&OdomFilter::odom_merged_callback, this));
 }
 
-void OdomFilter::odom_merged_callback() {
+void OdomFilter::odom_merged_callback()
+{
   check_dynamic_parameters();
   odom_merged_msg_.header.frame_id =
-      params_.tf_frame_prefix + params_.odom_frame_id;
+    params_.tf_frame_prefix + params_.odom_frame_id;
   odom_merged_msg_.child_frame_id =
-      params_.tf_frame_prefix + params_.robot_frame_id;
+    params_.tf_frame_prefix + params_.robot_frame_id;
   odom_merged_msg_.header.stamp = get_clock()->now();
 
   double vel_x = odom_merged_msg_.twist.twist.linear.x;
   double vel_y = odom_merged_msg_.twist.twist.linear.y;
 
   const double move_x =
-      vel_x * std::cos(odom_merged_yaw_) - vel_y * std::sin(odom_merged_yaw_);
+    vel_x * std::cos(odom_merged_yaw_) - vel_y * std::sin(odom_merged_yaw_);
   const double move_y =
-      vel_x * std::sin(odom_merged_yaw_) + vel_y * std::cos(odom_merged_yaw_);
+    vel_x * std::sin(odom_merged_yaw_) + vel_y * std::cos(odom_merged_yaw_);
 
   odom_merged_msg_.pose.pose.position.x += move_x * 0.01;
   odom_merged_msg_.pose.pose.position.y += move_y * 0.01;
@@ -104,22 +107,26 @@ void OdomFilter::odom_merged_callback() {
   }
 }
 
-void OdomFilter::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
+void OdomFilter::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+{
   odom_merged_msg_.twist.twist.angular.z = msg->angular_velocity.z;
   odom_merged_msg_.twist.covariance[35] = msg->angular_velocity_covariance[8];
 }
 
-void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
+{
   odom_merged_msg_.twist.twist.linear.x = msg->twist.twist.linear.x;
   odom_merged_msg_.twist.twist.linear.y = msg->twist.twist.linear.y;
 
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 5; i++) {
     odom_merged_msg_.twist.covariance[i * 7] = msg->twist.covariance[i * 7];
+  }
 }
 
 void OdomFilter::reset_odom_callback(
-    const std_srvs::srv::Trigger::Request::SharedPtr req,
-    std_srvs::srv::Trigger::Response::SharedPtr res) {
+  const std_srvs::srv::Trigger::Request::SharedPtr req,
+  std_srvs::srv::Trigger::Response::SharedPtr res)
+{
   constexpr std::chrono::seconds callback_timeout = std::chrono::seconds(3);
   odom_merged_msg_.pose.pose.position.x = 0.0;
   odom_merged_msg_.pose.pose.position.y = 0.0;
@@ -146,7 +153,8 @@ void OdomFilter::reset_odom_callback(
   }
 }
 
-void OdomFilter::check_dynamic_parameters() {
+void OdomFilter::check_dynamic_parameters()
+{
   if (param_listener_.is_old(params_)) {
     param_listener_.refresh_dynamic_parameters();
     params_ = param_listener_.get_params();
