@@ -20,8 +20,8 @@
     default=""
     description="Absolute path to the yaml file with firmware parameters to be overrided" />
 
-  <!-- This sets rpi_model -->
-  <include file="$(find-pkg-share leo_bringup)/launch/configure_rpi_model.launch.py" />
+  <!-- This sets leo_hardware_version -->
+  <include file="$(find-pkg-share leo_bringup)/launch/find_hardware_version.launch.py" />
 
   <include if="$(var spawn_state_publisher)"
     file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
@@ -57,15 +57,15 @@
   <node pkg="leo_fw" exec="firmware_parameter_bridge">
     <param name="default_params_file_path" value="$(var firmware_default_params_file)" />
     <param name="override_params_file_path" value="$(var firmware_override_params_file)" />
-    <param name="rpi_model" value="$(var rpi_model)" />
+    <param name="leo_hardware_version" value="$(var leo_hardware_version)" />
   </node>
 
-  <let if="$(eval $(var rpi_model)==5)" name="camera_config_file"
+  <let if="$(eval $(var leo_hardware_version)==109)" name="camera_config_file"
     value="$(find-pkg-share leo_bringup)/config/leo_camera_imx477.yaml" />
-  <let if="$(eval $(var rpi_model)==4)" name="camera_config_file"
+  <let if="$(eval $(var leo_hardware_version)==108)" name="camera_config_file"
     value="$(find-pkg-share leo_bringup)/config/leo_camera_ovh5647.yaml" />
 
-  <set_env if="$(eval $(var rpi_model)==5)" name="LIBCAMERA_RPI_TUNING_FILE"
+  <set_env if="$(eval $(var leo_hardware_version)==109)" name="LIBCAMERA_RPI_TUNING_FILE"
     value="$(find-pkg-share leo_bringup)/camera_tuning_files/Arducam-477M-Pi5.json" />
 
   <node_container namespace=""
