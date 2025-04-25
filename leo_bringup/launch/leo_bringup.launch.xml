@@ -57,6 +57,7 @@
   <node pkg="leo_fw" exec="firmware_parameter_bridge">
     <param name="default_params_file_path" value="$(var firmware_default_params_file)" />
     <param name="override_params_file_path" value="$(var firmware_override_params_file)" />
+    <param name="rpi_model" value="$(var rpi_model)" />
   </node>
 
   <let if="$(eval $(var rpi_model)==5)" name="camera_config_file"
