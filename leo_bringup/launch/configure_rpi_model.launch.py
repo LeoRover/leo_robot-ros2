@@ -3,8 +3,8 @@ from launch.actions import SetLaunchConfiguration
 
 
 def generate_launch_description():
-    rpi_model = -1
-    
+    rpi_model = 5
+
     try:
         with open("/proc/device-tree/model", "r", encoding="utf-8") as f:
             model = f.read().strip()
