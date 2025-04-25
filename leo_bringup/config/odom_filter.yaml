@@ -3,5 +3,4 @@
 /**:
   ros__parameters:
     robot_frame_id: "base_footprint"
-    odom_frame_id: "odom"
     publish_tf: true
