@@ -85,7 +85,7 @@ private:
   void wheel_odom_callback(const leo_msgs::msg::WheelOdom::SharedPtr msg) const
   {
     nav_msgs::msg::Odometry wheel_odom;
-    wheel_odom.header.frame_id = odom_frame_id_;
+    wheel_odom.header.frame_id = tf_frame_prefix_ + odom_frame_id_;
     wheel_odom.child_frame_id = tf_frame_prefix_ + robot_frame_id_;
     wheel_odom.header.stamp = msg->stamp;
     wheel_odom.twist.twist.linear.x = msg->velocity_lin;
@@ -106,7 +106,7 @@ private:
   void mecanum_odom_callback(const leo_msgs::msg::WheelOdomMecanum::SharedPtr msg) const
   {
     nav_msgs::msg::Odometry wheel_odom;
-    wheel_odom.header.frame_id = odom_frame_id_;
+    wheel_odom.header.frame_id = tf_frame_prefix_ + odom_frame_id_;
     wheel_odom.child_frame_id = tf_frame_prefix_ + robot_frame_id_;
     wheel_odom.header.stamp = msg->stamp;
     wheel_odom.twist.twist.linear.x = msg->velocity_lin_x;
