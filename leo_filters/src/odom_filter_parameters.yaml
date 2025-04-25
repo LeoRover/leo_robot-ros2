@@ -13,11 +13,6 @@ odom_filter:
     read_only: false
     validation:
       not_empty<>: []
-  tf_frame_prefix:
-    type: string
-    default_value: ""
-    description: "Prefix of the TF frames."
-    read_only: false
   publish_tf:
     type: bool
     default_value: true
