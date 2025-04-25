@@ -20,20 +20,24 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>image_proc</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rosapi</exec_depend>
   <exec_depend>rosbridge_server</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>v4l2_camera</exec_depend>
   <exec_depend>web_video_server</exec_depend>
   <exec_depend>xacro</exec_depend>
 
+  <!-- <exec_depend>leo_camera</exec_depend> -->
   <exec_depend>leo_description</exec_depend>
   <exec_depend>leo_fw</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_black</test_depend>
   <test_depend>ament_cmake_lint_cmake</test_depend>
   <test_depend>ament_cmake_xmllint</test_depend>
 
