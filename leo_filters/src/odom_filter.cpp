@@ -60,6 +60,8 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
 
   odom_merged_timer_ = create_wall_timer(
     10ms, std::bind(&OdomFilter::odom_merged_callback, this));
+
+  RCLCPP_INFO(get_logger(), "Started node");
 }
 
 void OdomFilter::odom_merged_callback()
