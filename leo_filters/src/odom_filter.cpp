@@ -68,8 +68,6 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
 void OdomFilter::odom_merged_callback()
 {
   check_dynamic_parameters();
-  odom_merged_msg_.header.frame_id =
-    tf_frame_prefix_ + params_.odom_frame_id;
   odom_merged_msg_.child_frame_id =
     tf_frame_prefix_ + params_.robot_frame_id;
   odom_merged_msg_.header.stamp = get_clock()->now();
@@ -118,6 +116,7 @@ void OdomFilter::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 
 void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
+  odom_merged_msg_.header.frame_id = msg->header.frame_id;
   odom_merged_msg_.twist.twist.linear.x = msg->twist.twist.linear.x;
   odom_merged_msg_.twist.twist.linear.y = msg->twist.twist.linear.y;
 
