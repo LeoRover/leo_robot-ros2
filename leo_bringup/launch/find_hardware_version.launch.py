@@ -17,6 +17,8 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            SetLaunchConfiguration(name="leo_hardware_version", value=str(leo_hardware_version)),
+            SetLaunchConfiguration(
+                name="leo_hardware_version", value=str(leo_hardware_version)
+            ),
         ]
     )
