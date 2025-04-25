@@ -1,0 +1,11 @@
+# http://wiki.ros.org/leo_bringup
+
+/**:
+  ros__parameters:
+    gain_acc: 0.01
+    bias_alpha: 0.01
+    do_bias_estimation: true
+    do_adaptive_gain: true
+    constant_dt: 0.0
+    orientation_variance: 0.001
+    bias_save_period: 5
