@@ -14,9 +14,9 @@ def generate_launch_description():
             rpi_model = 4
     except (FileNotFoundError, IOError) as e:
         print(f"Failed to read Raspberry Pi model: {e}")
-    
-    return LaunchDescription([
-        SetLaunchConfiguration(name='rpi_model', 
-                               value=str(rpi_model)),
-    ])
 
+    return LaunchDescription(
+        [
+            SetLaunchConfiguration(name="rpi_model", value=str(rpi_model)),
+        ]
+    )
