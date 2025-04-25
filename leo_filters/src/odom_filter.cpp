@@ -67,6 +67,10 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
 
 void OdomFilter::odom_merged_callback()
 {
+  if (!imu_received_ || !odom_received_) {
+    return;
+  }
+
   check_dynamic_parameters();
   odom_merged_msg_.child_frame_id =
     tf_frame_prefix_ + params_.robot_frame_id;
@@ -97,7 +101,7 @@ void OdomFilter::odom_merged_callback()
 
   if (params_.publish_tf) {
     tf_msg_.header.stamp = get_clock()->now();
-    tf_msg_.header.frame_id = tf_frame_prefix_ + params_.odom_frame_id;
+    tf_msg_.header.frame_id = odom_merged_msg_.header.frame_id;
     tf_msg_.child_frame_id = tf_frame_prefix_ + params_.robot_frame_id;
 
     tf_msg_.transform.translation.x = odom_merged_msg_.pose.pose.position.x;
@@ -112,6 +116,8 @@ void OdomFilter::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   odom_merged_msg_.twist.twist.angular.z = msg->angular_velocity.z;
   odom_merged_msg_.twist.covariance[35] = msg->angular_velocity_covariance[8];
+
+  imu_received_ = true;
 }
 
 void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
@@ -123,6 +129,8 @@ void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
   for (int i = 0; i < 5; i++) {
     odom_merged_msg_.twist.covariance[i * 7] = msg->twist.covariance[i * 7];
   }
+
+  odom_received_ = true;
 }
 
 void OdomFilter::reset_odom_callback(

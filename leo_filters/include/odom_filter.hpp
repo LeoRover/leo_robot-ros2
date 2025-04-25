@@ -81,5 +81,7 @@ private:
   // Flags and variables
   double odom_merged_yaw_{};
   std::string tf_frame_prefix_{};
+  bool imu_received_{};
+  bool odom_received_{};
 };
 } // namespace leo_filters
