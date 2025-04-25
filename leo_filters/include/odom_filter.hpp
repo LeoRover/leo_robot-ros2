@@ -79,6 +79,7 @@ private:
   odom_filter::Params params_;
 
   // Flags and variables
-  double odom_merged_yaw_;
+  double odom_merged_yaw_{};
+  std::string tf_frame_prefix_{};
 };
 } // namespace leo_filters

@@ -36,6 +36,7 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
   param_listener_(get_node_parameters_interface())
 {
   params_ = param_listener_.get_params();
+  tf_frame_prefix_ = declare_parameter("tf_frame_prefix", tf_frame_prefix_);
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "imu/data", rclcpp::QoS(5).best_effort(),
@@ -68,9 +69,9 @@ void OdomFilter::odom_merged_callback()
 {
   check_dynamic_parameters();
   odom_merged_msg_.header.frame_id =
-    params_.tf_frame_prefix + params_.odom_frame_id;
+    tf_frame_prefix_ + params_.odom_frame_id;
   odom_merged_msg_.child_frame_id =
-    params_.tf_frame_prefix + params_.robot_frame_id;
+    tf_frame_prefix_ + params_.robot_frame_id;
   odom_merged_msg_.header.stamp = get_clock()->now();
 
   double vel_x = odom_merged_msg_.twist.twist.linear.x;
@@ -98,8 +99,8 @@ void OdomFilter::odom_merged_callback()
 
   if (params_.publish_tf) {
     tf_msg_.header.stamp = get_clock()->now();
-    tf_msg_.header.frame_id = params_.tf_frame_prefix + params_.odom_frame_id;
-    tf_msg_.child_frame_id = params_.tf_frame_prefix + params_.robot_frame_id;
+    tf_msg_.header.frame_id = tf_frame_prefix_ + params_.odom_frame_id;
+    tf_msg_.child_frame_id = tf_frame_prefix_ + params_.robot_frame_id;
 
     tf_msg_.transform.translation.x = odom_merged_msg_.pose.pose.position.x;
     tf_msg_.transform.translation.y = odom_merged_msg_.pose.pose.position.y;
