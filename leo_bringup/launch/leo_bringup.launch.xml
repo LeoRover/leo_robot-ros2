@@ -71,7 +71,7 @@
     name="image_container"
     pkg="rclcpp_components"
     exec="component_container">
-    <composable_node namespace="camera"
+    <composable_node namespace=""
       name="camera"
       pkg="leo_camera"
       plugin="leo_camera::CameraNode">
