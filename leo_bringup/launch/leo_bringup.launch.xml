@@ -61,18 +61,14 @@
   </node>
 
   <!-- Leo Rover v1.8 or earlier -->
-  <group if="$(eval $(var leo_hardware_version)==1)">
-    <let name="camera_config_file"
-      value="$(find-pkg-share leo_bringup)/config/leo_camera_ov5647.yaml" />
-  </group>
+  <let if="$(eval $(var leo_hardware_version)==1)" name="camera_config_file"
+    value="$(find-pkg-share leo_bringup)/config/leo_camera_ovh5647.yaml" />
 
   <!-- Leo Rover v1.9 or later -->
-  <group if="$(eval $(var leo_hardware_version)==2)">
-    <let name="camera_config_file"
-      value="$(find-pkg-share leo_bringup)/config/leo_camera_imx477.yaml" />
-    <set_env name="LIBCAMERA_RPI_TUNING_FILE"
-      value="$(find-pkg-share leo_bringup)/camera_tuning_files/Arducam-477M-Pi5.json" />
-  </group>
+  <let if="$(eval $(var leo_hardware_version)==2)" name="camera_config_file"
+  value="$(find-pkg-share leo_bringup)/config/leo_camera_imx477.yaml" />
+  <set_env if="$(eval $(var leo_hardware_version)==2)" name="LIBCAMERA_RPI_TUNING_FILE"
+    value="$(find-pkg-share leo_bringup)/camera_tuning_files/Arducam-477M-Pi5.json" />
 
   <node_container namespace=""
     name="image_container"
