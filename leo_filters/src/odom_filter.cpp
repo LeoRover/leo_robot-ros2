@@ -32,11 +32,9 @@ using std::placeholders::_2;
 namespace leo_filters
 {
 OdomFilter::OdomFilter(rclcpp::NodeOptions options)
-: Node("odom_filter", options),
-  param_listener_(get_node_parameters_interface())
+: Node("odom_filter", options)
 {
-  params_ = param_listener_.get_params();
-
+  declare_parameter("publish_tf", true);
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "imu/data", rclcpp::QoS(5).best_effort(),
     std::bind(&OdomFilter::imu_callback, this, _1));
@@ -69,8 +67,6 @@ void OdomFilter::odom_merged_callback()
   if (!imu_received_ || !odom_received_) {
     return;
   }
-
-  check_dynamic_parameters();
   odom_merged_msg_.header.stamp = get_clock()->now();
 
   double vel_x = odom_merged_msg_.twist.twist.linear.x;
@@ -96,10 +92,10 @@ void OdomFilter::odom_merged_callback()
 
   odom_merged_pub_->publish(odom_merged_msg_);
 
-  if (params_.publish_tf) {
+  if (get_parameter("publish_tf").as_bool()) {
     geometry_msgs::msg::TransformStamped tf_msg;
     tf_msg.header = odom_merged_msg_.header;
-    tf_msg.child_frame_id =  odom_merged_msg_.child_frame_id;
+    tf_msg.child_frame_id = odom_merged_msg_.child_frame_id;
 
     tf_msg.transform.translation.x = odom_merged_msg_.pose.pose.position.x;
     tf_msg.transform.translation.y = odom_merged_msg_.pose.pose.position.y;
@@ -158,14 +154,6 @@ void OdomFilter::reset_odom_callback(
   } else {
     res->success = false;
     res->message = "Firmware service call deffered.";
-  }
-}
-
-void OdomFilter::check_dynamic_parameters()
-{
-  if (param_listener_.is_old(params_)) {
-    param_listener_.refresh_dynamic_parameters();
-    params_ = param_listener_.get_params();
   }
 }
 } // namespace leo_filters

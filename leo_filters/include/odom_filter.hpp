@@ -27,8 +27,6 @@
 #include "std_srvs/srv/trigger.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 
-#include "leo_filters/odom_filter_parameters.hpp"
-
 namespace leo_filters
 {
 
@@ -45,7 +43,6 @@ private:
   void reset_odom_callback(
     const std_srvs::srv::Trigger::Request::SharedPtr req,
     std_srvs::srv::Trigger::Response::SharedPtr res);
-  void check_dynamic_parameters();
 
   // ROS entities
   // Subscriptions
@@ -72,10 +69,6 @@ private:
 
   // Callback Groups
   rclcpp::CallbackGroup::SharedPtr client_cb_group_;
-
-  // Parameters
-  odom_filter::ParamListener param_listener_;
-  odom_filter::Params params_;
 
   // Flags and variables
   double odom_merged_yaw_{};
