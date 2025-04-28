@@ -56,6 +56,8 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
   odom_merged_pub_ =
     create_publisher<nav_msgs::msg::Odometry>("merged_odom", 10);
 
+  last_call_ = rclcpp::Time(0ll, get_clock()->get_clock_type());
+
   odom_merged_timer_ = create_wall_timer(
     10ms, std::bind(&OdomFilter::odom_merged_callback, this));
 
@@ -67,7 +69,15 @@ void OdomFilter::odom_merged_callback()
   if (!imu_received_ || !odom_received_) {
     return;
   }
-  odom_merged_msg_.header.stamp = get_clock()->now();
+
+  rclcpp::Time current_time = get_clock()->now();
+
+  if (last_call_.nanoseconds() <= 0) {
+    last_call_ = current_time;
+    return;
+  }
+
+  odom_merged_msg_.header.stamp = current_time;
 
   double vel_x = odom_merged_msg_.twist.twist.linear.x;
   double vel_y = odom_merged_msg_.twist.twist.linear.y;
@@ -77,10 +87,11 @@ void OdomFilter::odom_merged_callback()
   const double move_y =
     vel_x * std::sin(odom_merged_yaw_) + vel_y * std::cos(odom_merged_yaw_);
 
-  odom_merged_msg_.pose.pose.position.x += move_x * 0.01;
-  odom_merged_msg_.pose.pose.position.y += move_y * 0.01;
+  rclcpp::Duration dt = current_time - last_call_;
+  odom_merged_msg_.pose.pose.position.x += move_x * dt.seconds();
+  odom_merged_msg_.pose.pose.position.y += move_y * dt.seconds();
 
-  odom_merged_yaw_ += odom_merged_msg_.twist.twist.angular.z * 0.01;
+  odom_merged_yaw_ += odom_merged_msg_.twist.twist.angular.z * dt.seconds();
 
   if (odom_merged_yaw_ > 2.0 * PI) {
     odom_merged_yaw_ -= 2.0 * PI;
@@ -103,6 +114,7 @@ void OdomFilter::odom_merged_callback()
 
     broadcaster_->sendTransform(tf_msg);
   }
+  last_call_ = current_time;
 }
 
 void OdomFilter::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)

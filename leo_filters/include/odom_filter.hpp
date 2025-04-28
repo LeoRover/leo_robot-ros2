@@ -70,6 +70,9 @@ private:
   // Callback Groups
   rclcpp::CallbackGroup::SharedPtr client_cb_group_;
 
+  // Time
+  rclcpp::Time last_call_;
+
   // Flags and variables
   double odom_merged_yaw_{};
   std::string tf_frame_prefix_{};
