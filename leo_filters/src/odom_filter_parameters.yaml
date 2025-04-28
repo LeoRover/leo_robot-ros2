@@ -1,6 +1,0 @@
-odom_filter:
-  publish_tf:
-    type: bool
-    default_value: true
-    description: "Flag specyfing whether transform from odom to robot frame should be published."
-    read_only: false
