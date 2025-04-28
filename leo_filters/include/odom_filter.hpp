@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Fictionlab sp. z o.o.
+// Copyright 2025 Fictionlab sp. z o.o.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,6 @@ private:
 
   // Messages
   nav_msgs::msg::Odometry odom_merged_msg_;
-  geometry_msgs::msg::TransformStamped tf_msg_;
 
   // Callback Groups
   rclcpp::CallbackGroup::SharedPtr client_cb_group_;

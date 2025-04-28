@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Fictionlab sp. z o.o.
+// Copyright 2025 Fictionlab sp. z o.o.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
   param_listener_(get_node_parameters_interface())
 {
   params_ = param_listener_.get_params();
-  tf_frame_prefix_ = declare_parameter("tf_frame_prefix", tf_frame_prefix_);
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "imu/data", rclcpp::QoS(5).best_effort(),
@@ -72,8 +71,6 @@ void OdomFilter::odom_merged_callback()
   }
 
   check_dynamic_parameters();
-  odom_merged_msg_.child_frame_id =
-    tf_frame_prefix_ + params_.robot_frame_id;
   odom_merged_msg_.header.stamp = get_clock()->now();
 
   double vel_x = odom_merged_msg_.twist.twist.linear.x;
@@ -100,15 +97,15 @@ void OdomFilter::odom_merged_callback()
   odom_merged_pub_->publish(odom_merged_msg_);
 
   if (params_.publish_tf) {
-    tf_msg_.header.stamp = get_clock()->now();
-    tf_msg_.header.frame_id = odom_merged_msg_.header.frame_id;
-    tf_msg_.child_frame_id = tf_frame_prefix_ + params_.robot_frame_id;
+    geometry_msgs::msg::TransformStamped tf_msg;
+    tf_msg.header = odom_merged_msg_.header;
+    tf_msg.child_frame_id =  odom_merged_msg_.child_frame_id;
 
-    tf_msg_.transform.translation.x = odom_merged_msg_.pose.pose.position.x;
-    tf_msg_.transform.translation.y = odom_merged_msg_.pose.pose.position.y;
-    tf_msg_.transform.rotation = odom_merged_msg_.pose.pose.orientation;
+    tf_msg.transform.translation.x = odom_merged_msg_.pose.pose.position.x;
+    tf_msg.transform.translation.y = odom_merged_msg_.pose.pose.position.y;
+    tf_msg.transform.rotation = odom_merged_msg_.pose.pose.orientation;
 
-    broadcaster_->sendTransform(tf_msg_);
+    broadcaster_->sendTransform(tf_msg);
   }
 }
 
@@ -123,6 +120,7 @@ void OdomFilter::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   odom_merged_msg_.header.frame_id = msg->header.frame_id;
+  odom_merged_msg_.child_frame_id = msg->child_frame_id;
   odom_merged_msg_.twist.twist.linear.x = msg->twist.twist.linear.x;
   odom_merged_msg_.twist.twist.linear.y = msg->twist.twist.linear.y;
 

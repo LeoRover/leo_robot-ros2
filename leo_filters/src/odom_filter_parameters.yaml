@@ -1,11 +1,4 @@
 odom_filter:
-  robot_frame_id:
-    type: string
-    default_value: "base_footprint"
-    description: "Name of the base robot frame in TF-tree."
-    read_only: false
-    validation:
-      not_empty<>: []
   publish_tf:
     type: bool
     default_value: true

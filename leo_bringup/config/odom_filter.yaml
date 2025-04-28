@@ -1,6 +1,3 @@
-# http://wiki.ros.org/leo_bringup
-
 /**:
   ros__parameters:
-    robot_frame_id: "base_footprint"
     publish_tf: true
