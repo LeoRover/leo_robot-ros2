@@ -18,11 +18,6 @@ generate_parameter_library(
   src/imu_filter_parameters.yaml
 )
 
-generate_parameter_library(
-  odom_filter_parameters
-  src/odom_filter_parameters.yaml
-)
-
 include_directories(
   include
   ${YAML_CPP_INCLUDE_DIRS}
@@ -35,7 +30,6 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_link_libraries(${PROJECT_NAME}
-  odom_filter_parameters
   imu_filter_parameters
   rclcpp::rclcpp
   rclcpp_components::component
