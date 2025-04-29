@@ -42,7 +42,6 @@ ImuFilter::ImuFilter(rclcpp::NodeOptions options)
 {
   params_ = param_listener_.get_params();
   update_filter_params();
-  load_bias();
 
   imu_pub_ = create_publisher<sensor_msgs::msg::Imu>("imu/data", 5);
 
@@ -56,10 +55,12 @@ ImuFilter::ImuFilter(rclcpp::NodeOptions options)
     rclcpp::QosPolicyKind::Reliability,
   }};
 
-  auto period = std::chrono::duration<double>(params_.bias_save_period * 60.0);
-
-  bias_save_timer_ =
-    create_wall_timer(period, std::bind(&ImuFilter::save_bias, this));
+  if (params_.do_save_bias) {
+    load_bias();
+    bias_save_timer_ =
+      create_wall_timer(std::chrono::seconds(params_.bias_save_period),
+        std::bind(&ImuFilter::save_bias, this));
+  }
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "imu/data_raw", rclcpp::QoS(5).best_effort(),
@@ -164,8 +165,7 @@ void ImuFilter::update_filter_params()
     filter_.setDoAdaptiveGain(params_.do_adaptive_gain);
   }
 
-  double gain = filter_.getGainAcc();
-  if (std::fabs(gain - params_.gain_acc) > 0.001) {
+  if (filter_.getGainAcc() != params_.gain_acc) {
     if (!filter_.setGainAcc(params_.gain_acc)) {
       RCLCPP_WARN(
         this->get_logger(),
@@ -173,8 +173,7 @@ void ImuFilter::update_filter_params()
     }
   }
 
-  double bias_alpha = filter_.getBiasAlpha();
-  if (std::fabs(bias_alpha - params_.bias_alpha) > 0.001) {
+  if (filter_.getBiasAlpha() != params_.bias_alpha) {
     if (!filter_.setBiasAlpha(params_.bias_alpha)) {
       RCLCPP_WARN(
         this->get_logger(),
@@ -206,12 +205,7 @@ void ImuFilter::imu_callback(sensor_msgs::msg::Imu::SharedPtr msg)
     return;
   }
 
-  double dt;
-  if (params_.constant_dt > 0.0) {
-    dt = params_.constant_dt;
-  } else {
-    dt = (time - time_prev_).nanoseconds() * 1e-9;
-  }
+  double dt = (time - time_prev_).nanoseconds() * 1e-9;
 
   time_prev_ = time;
 
@@ -220,20 +214,11 @@ void ImuFilter::imu_callback(sensor_msgs::msg::Imu::SharedPtr msg)
   publish(msg);
 }
 
-tf2::Quaternion ImuFilter::hamiltonToTFQuaternion(
-  double q0, double q1,
-  double q2, double q3) const
-{
-  // ROS uses the Hamilton quaternion convention (q0 is the scalar). However,
-  // the ROS quaternion is in the form [x, y, z, w], with w as the scalar.
-  return tf2::Quaternion(q1, q2, q3, q0);
-}
-
 void ImuFilter::publish(sensor_msgs::msg::Imu::SharedPtr imu_msg)
 {
   double q0, q1, q2, q3;
   filter_.getOrientation(q0, q1, q2, q3);
-  tf2::Quaternion q = hamiltonToTFQuaternion(q0, q1, q2, q3);
+  tf2::Quaternion q = leo_filters::hamiltonToTFQuaternion(q0, q1, q2, q3);
 
   imu_msg->orientation.x = q1;
   imu_msg->orientation.y = q2;
@@ -261,6 +246,16 @@ void ImuFilter::publish(sensor_msgs::msg::Imu::SharedPtr imu_msg)
   M.getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);
   rpy_pub_->publish(rpy);
 }
+
+inline tf2::Quaternion hamiltonToTFQuaternion(
+  double q0, double q1,
+  double q2, double q3)
+{
+  // ROS uses the Hamilton quaternion convention (q0 is the scalar). However,
+  // the ROS quaternion is in the form [x, y, z, w], with w as the scalar.
+  return tf2::Quaternion(q1, q2, q3, q0);
+}
+
 } // namespace leo_filters
 
 #include "rclcpp_components/register_node_macro.hpp"

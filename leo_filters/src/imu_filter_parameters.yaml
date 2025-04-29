@@ -23,13 +23,6 @@ imu_filter:
     default_value: true
     description: "Whether to do adaptive gain or not."
     read_only: false
-  constant_dt:
-    type: double
-    default_value: 0.0
-    description: "The dt to use; if 0.0 (default), compute dt dynamically from message headers."
-    read_only: false
-    validation:
-      gt_eq<>: 0.0
   orientation_variance:
     type: double
     default_value: 0.001
@@ -37,11 +30,16 @@ imu_filter:
     read_only: false
     validation:
       gt<>: 0.0
+  do_save_bias:
+    type: bool
+    default_value: false
+    description: "Whether to periodically store the gyroscope bias on the disk and load it upon startup."
+    read_only: true
   bias_save_period:
     type: int
-    default_value: 5
-    description: "Time interval between current imu bias save (in minutes)."
-    read_only: false
+    default_value: 120
+    description: "Time interval between current imu bias save (in seconds)."
+    read_only: true
     validation:
-      bounds<>: [1, 10]
+      gt_eq<>: [1]
   

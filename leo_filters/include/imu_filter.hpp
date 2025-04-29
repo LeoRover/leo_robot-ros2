@@ -45,9 +45,6 @@ private:
   void check_dynamic_parameters();
   void update_filter_params();
   void publish(sensor_msgs::msg::Imu::SharedPtr);
-  tf2::Quaternion hamiltonToTFQuaternion(
-    double q0, double q1, double q2,
-    double q3) const;
 
   // ROS entities
   // Subscriptions
@@ -69,5 +66,9 @@ private:
   rclcpp::Time time_prev_;
   bool initialized_filter_{};
 };
+
+inline tf2::Quaternion hamiltonToTFQuaternion(
+  double q0, double q1, double q2,
+  double q3);
 
 }  // namespace leo_filters
