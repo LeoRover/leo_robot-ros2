@@ -73,7 +73,7 @@ ImuFilter::ImuFilter(rclcpp::NodeOptions options)
   }
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-    "imu/data_raw", rclcpp::QoS(5).best_effort(),
+    "imu/data_raw", 10,
     std::bind(&ImuFilter::imu_callback, this, _1), sub_opts);
 
   RCLCPP_INFO(get_logger(), "Started node");
