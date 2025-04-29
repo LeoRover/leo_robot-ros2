@@ -12,13 +12,13 @@
 
 /camera/debayer:
   ros__parameters:
-    .image_color.compressed.jpeg_quality: 50
-    .image_mono.compressed.jpeg_quality: 50
+    .image_color.compressed.jpeg_quality: 80
+    .image_mono.compressed.jpeg_quality: 80
 
 /camera/rectify_color:
   ros__parameters:
-    .image_rect.compressed.jpeg_quality: 50
+    .image_rect.compressed.jpeg_quality: 80
 
 /camera/rectify_mono:
   ros__parameters:
-    .image_rect.compressed.jpeg_quality: 50
+    .image_rect.compressed.jpeg_quality: 80
