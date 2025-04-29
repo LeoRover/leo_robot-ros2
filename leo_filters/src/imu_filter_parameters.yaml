@@ -29,7 +29,7 @@ imu_filter:
     description: "Value on the diagonal of orientation covariance matrix."
     read_only: false
     validation:
-      gt<>: 0.0
+      gt<>: [0.0]
   do_save_bias:
     type: bool
     default_value: false
