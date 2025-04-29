@@ -67,6 +67,8 @@ class ParameterBridge(Node):
         )
         self.declare_parameter("override_params_file_path", "")
 
+        self.declare_parameter("leo_hardware_version", 109)
+
         self.load_default_params()
         self.load_override_params()
 
@@ -205,6 +207,11 @@ class ParameterBridge(Node):
 
         param_request = SetParameters.Request()
         param_request.parameters = self.parse_firmware_parameters()
+
+        param_request.parameters.append(
+            self.get_parameter("leo_hardware_version").to_parameter_msg()
+        )
+
         future = self.firmware_parameter_service_client.call_async(param_request)
 
         assert self.executor is not None
