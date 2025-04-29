@@ -85,11 +85,11 @@ void OdomFilter::odom_merged_callback()
   const double move_y =
     vel_x * std::sin(odom_merged_yaw_) + vel_y * std::cos(odom_merged_yaw_);
 
-  rclcpp::Duration dt = current_time - *last_call_time_;
-  odom_merged_msg_.pose.pose.position.x += move_x * dt.seconds();
-  odom_merged_msg_.pose.pose.position.y += move_y * dt.seconds();
+  double dt = (current_time - *last_call_time_).seconds();
+  odom_merged_msg_.pose.pose.position.x += move_x * dt;
+  odom_merged_msg_.pose.pose.position.y += move_y * dt;
 
-  odom_merged_yaw_ += odom_merged_msg_.twist.twist.angular.z * dt.seconds();
+  odom_merged_yaw_ += odom_merged_msg_.twist.twist.angular.z * dt;
 
   if (odom_merged_yaw_ > 2.0 * PI) {
     odom_merged_yaw_ -= 2.0 * PI;
