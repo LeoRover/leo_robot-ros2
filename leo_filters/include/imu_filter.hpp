@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "geometry_msgs/msg/vector3_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
@@ -61,10 +63,11 @@ private:
   imu_filter::ParamListener param_listener_;
   imu_filter::Params params_;
 
-  // State variables:
+  // Time
+  std::optional<rclcpp::Time> prev_time_{std::nullopt};
+
+  // Filters:
   imu_tools::ComplementaryFilter filter_;
-  rclcpp::Time time_prev_;
-  bool initialized_filter_{};
 };
 
 inline tf2::Quaternion hamiltonToTFQuaternion(

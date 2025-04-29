@@ -195,19 +195,18 @@ void ImuFilter::imu_callback(sensor_msgs::msg::Imu::SharedPtr msg)
 {
   const geometry_msgs::msg::Vector3 & a = msg->linear_acceleration;
   const geometry_msgs::msg::Vector3 & w = msg->angular_velocity;
-  const rclcpp::Time & time = msg->header.stamp;
+  const rclcpp::Time & current_time = msg->header.stamp;
 
   check_dynamic_parameters();
 
-  if (!initialized_filter_) {
-    time_prev_ = time;
-    initialized_filter_ = true;
+  if (!prev_time_.has_value()) {
+    prev_time_ = current_time;
     return;
   }
 
-  double dt = (time - time_prev_).nanoseconds() * 1e-9;
+  double dt = (current_time - *prev_time_).seconds();
 
-  time_prev_ = time;
+  prev_time_ = current_time;
 
   filter_.update(a.x, a.y, a.z, w.x, w.y, w.z, dt);
 
