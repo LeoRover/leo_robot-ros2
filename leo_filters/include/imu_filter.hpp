@@ -69,9 +69,4 @@ private:
   // Filters:
   imu_tools::ComplementaryFilter filter_;
 };
-
-inline tf2::Quaternion hamiltonToTFQuaternion(
-  double q0, double q1, double q2,
-  double q3);
-
 }  // namespace leo_filters
