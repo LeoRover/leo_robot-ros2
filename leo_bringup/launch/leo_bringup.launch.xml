@@ -62,7 +62,7 @@
 
   <!-- Leo Rover v1.8 or earlier -->
   <let if="$(eval $(var leo_hardware_version)==1)" name="camera_config_file"
-    value="$(find-pkg-share leo_bringup)/config/leo_camera_ovh5647.yaml" />
+    value="$(find-pkg-share leo_bringup)/config/leo_camera_ov5647.yaml" />
 
   <!-- Leo Rover v1.9 or later -->
   <let if="$(eval $(var leo_hardware_version)==2)" name="camera_config_file"
