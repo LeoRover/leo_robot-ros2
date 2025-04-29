@@ -80,10 +80,16 @@ void ImuFilter::save_bias()
     node["gyro_bias_y"] = filter_.getAngularVelocityBiasY();
     node["gyro_bias_z"] = filter_.getAngularVelocityBiasZ();
   } catch (const YAML::BadFile & e) {
-    RCLCPP_ERROR(
+    RCLCPP_WARN(
       get_logger(),
       "IMU bias file doesn't exist or couldn't be opened: %s",
       e.what());
+    RCLCPP_INFO(get_logger(), "Creating '%s' file with current gyrometer bias.",
+        file_path);
+
+    node["gyro_bias_x"] = filter_.getAngularVelocityBiasX();
+    node["gyro_bias_y"] = filter_.getAngularVelocityBiasY();
+    node["gyro_bias_z"] = filter_.getAngularVelocityBiasZ();
   } catch (const YAML::Exception & e) {
     RCLCPP_ERROR(
       get_logger(), "YAML error while loading bias file: %s",
@@ -103,9 +109,12 @@ void ImuFilter::save_bias()
     }
   } catch (const YAML::Exception & e) {
     RCLCPP_ERROR(
-      get_logger(), "YAML error while writing bias file: %s",
+      get_logger(), "YAML error while saving bias file: %s",
       e.what());
+    return;
   }
+
+  RCLCPP_INFO(get_logger(), "Gyrometer bias save successful.");
 }
 
 void ImuFilter::load_bias()
@@ -127,17 +136,14 @@ void ImuFilter::load_bias()
     if (node["gyro_bias_z"]) {
       filter_.setAngularVelocityBiasZ(node["gyro_bias_z"].as<double>());
     }
+    RCLCPP_INFO(get_logger(), "Gyrometer bias load successful.")
 
   } catch (YAML::BadFile & e) {
-    RCLCPP_ERROR(get_logger(), "IMU bias file doesn't exist.\n");
-    RCLCPP_ERROR(get_logger(), "Creating IMU bias file with current gyrometer bias.\n");
-
-    node["gyro_bias_x"] = filter_.getAngularVelocityBiasX();
-    node["gyro_bias_y"] = filter_.getAngularVelocityBiasY();
-    node["gyro_bias_z"] = filter_.getAngularVelocityBiasZ();
-
-    std::ofstream fout(file_path);
-    fout << node;
+    RCLCPP_WARN(
+      get_logger(),
+      "IMU bias file doesn't exist or couldn't be opened: %s",
+      e.what());
+    RCLCPP_WARN(get_logger(), "Gyrometer bias load failed.");
   }
 }
 
