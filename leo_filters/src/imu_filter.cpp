@@ -84,8 +84,8 @@ void ImuFilter::save_bias()
       get_logger(),
       "IMU bias file doesn't exist or couldn't be opened: %s",
       e.what());
-    RCLCPP_INFO(get_logger(), "Creating '%s' file with current gyrometer bias.",
-        file_path);
+    RCLCPP_INFO_STREAM(get_logger(),
+        "Creating '" << file_path << "' file with current gyrometer bias.");
 
     node["gyro_bias_x"] = filter_.getAngularVelocityBiasX();
     node["gyro_bias_y"] = filter_.getAngularVelocityBiasY();
@@ -136,7 +136,7 @@ void ImuFilter::load_bias()
     if (node["gyro_bias_z"]) {
       filter_.setAngularVelocityBiasZ(node["gyro_bias_z"].as<double>());
     }
-    RCLCPP_INFO(get_logger(), "Gyrometer bias load successful.")
+    RCLCPP_INFO(get_logger(), "Gyrometer bias load successful.");
 
   } catch (YAML::BadFile & e) {
     RCLCPP_WARN(
