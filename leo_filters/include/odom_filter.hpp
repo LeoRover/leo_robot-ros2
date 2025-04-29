@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -71,7 +73,7 @@ private:
   rclcpp::CallbackGroup::SharedPtr client_cb_group_;
 
   // Time
-  rclcpp::Time last_call_;
+  std::optional<rclcpp::Time> last_call_time_ {std::nullopt};
 
   // Flags and variables
   double odom_merged_yaw_{};
