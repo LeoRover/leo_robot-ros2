@@ -36,6 +36,16 @@ using std::placeholders::_1;
 
 namespace leo_filters
 {
+inline tf2::Quaternion hamiltonToTFQuaternion(
+  double q0, double q1,
+  double q2, double q3)
+{
+    // ROS uses the Hamilton quaternion convention (q0 is the scalar). However,
+    // the ROS quaternion is in the form [x, y, z, w], with w as the scalar.
+  return tf2::Quaternion(q1, q2, q3, q0);
+}
+
+
 ImuFilter::ImuFilter(rclcpp::NodeOptions options)
 : Node("imu_filter", options),
   param_listener_(get_node_parameters_interface())
@@ -250,15 +260,6 @@ void ImuFilter::publish(sensor_msgs::msg::Imu::SharedPtr imu_msg)
   M.setRotation(q);
   M.getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);
   rpy_pub_->publish(rpy);
-}
-
-inline tf2::Quaternion hamiltonToTFQuaternion(
-  double q0, double q1,
-  double q2, double q3)
-{
-  // ROS uses the Hamilton quaternion convention (q0 is the scalar). However,
-  // the ROS quaternion is in the form [x, y, z, w], with w as the scalar.
-  return tf2::Quaternion(q1, q2, q3, q0);
 }
 
 } // namespace leo_filters
