@@ -4,6 +4,6 @@
     bias_alpha: 0.01
     do_bias_estimation: true
     do_adaptive_gain: true
-    constant_dt: 0.0
     orientation_variance: 0.001
-    bias_save_period: 5
+    bias_save_period: 120
+    do_save_bias: true
