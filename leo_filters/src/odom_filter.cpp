@@ -56,8 +56,6 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
   odom_merged_pub_ =
     create_publisher<nav_msgs::msg::Odometry>("merged_odom", 10);
 
-  last_call_time_ = rclcpp::Time(0ll, get_clock()->get_clock_type());
-
   odom_merged_timer_ = create_wall_timer(
     10ms, std::bind(&OdomFilter::odom_merged_callback, this));
 
