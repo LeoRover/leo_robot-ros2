@@ -54,7 +54,6 @@
   </node>
 
   <node pkg="leo_filters" exec="odom_filter">
-    <param name="tf_frame_prefix" value="$(var tf_frame_prefix)" />
     <param from="$(find-pkg-share leo_bringup)/config/odom_filter.yaml" />
   </node>
 
