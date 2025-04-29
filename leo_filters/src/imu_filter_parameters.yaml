@@ -41,5 +41,5 @@ imu_filter:
     description: "Time interval between current imu bias save (in seconds)."
     read_only: true
     validation:
-      gt_eq<>: [1]
+      bounds<>: [1, 600]
   
