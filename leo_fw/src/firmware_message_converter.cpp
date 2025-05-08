@@ -237,7 +237,7 @@ private:
   }
 
   // Parameters
-  std::string robot_frame_id_ = "base_link";
+  std::string robot_frame_id_ = "base_footprint";
   std::string odom_frame_id_ = "odom";
   std::string imu_frame_id_ = "imu_frame";
   std::vector<std::string> wheel_joint_names_ = {
