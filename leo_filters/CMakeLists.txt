@@ -30,19 +30,16 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_link_libraries(${PROJECT_NAME}
+  ${geometry_msgs_TARGETS}
   imu_filter_parameters
+  ${nav_msgs_TARGETS}
   rclcpp::rclcpp
   rclcpp_components::component
+  ${sensor_msgs_TARGETS}
+  ${std_srvs_TARGETS}
+  tf2::tf2
+  tf2_ros::tf2_ros
   ${YAML_CPP_LIBRARIES}
-)
-
-ament_target_dependencies(${PROJECT_NAME}
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
-  std_srvs
-  tf2
-  tf2_ros
 )
 
 rclcpp_components_register_node(

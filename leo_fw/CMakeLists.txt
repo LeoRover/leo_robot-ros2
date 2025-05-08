@@ -17,13 +17,11 @@ add_library(leo_fw SHARED
   src/firmware_message_converter.cpp
 )
 target_link_libraries(leo_fw
+  ${leo_msgs_TARGETS}
+  ${nav_msgs_TARGETS}
   rclcpp::rclcpp
   rclcpp_components::component
-)
-ament_target_dependencies(leo_fw
-  sensor_msgs
-  leo_msgs
-  nav_msgs
+  ${sensor_msgs_TARGETS}
 )
 rclcpp_components_register_node(leo_fw
   PLUGIN "leo_fw::FirmwareMessageConverter"
