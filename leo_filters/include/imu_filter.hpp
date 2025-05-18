@@ -25,7 +25,6 @@
 #include "geometry_msgs/msg/vector3_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
-#include "tf2/LinearMath/Quaternion.h"
 
 #include "complementary_filter.hpp"
 
