@@ -27,7 +27,7 @@
 #include "geometry_msgs/msg/vector3.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
-#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Matrix3x3.hpp"
 
 #include "imu_filter.hpp"
 
