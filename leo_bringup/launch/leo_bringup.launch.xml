@@ -59,7 +59,6 @@
 
   <node pkg="leo_filters" exec="odom_filter">
     <param name="publish_tf" value="$(var publish_odom_tf)" />
-    <param from="$(find-pkg-share leo_bringup)/config/odom_filter.yaml" />
   </node>
 
   <let if="$(var mecanum_wheels)" name="firmware_default_params_file"
