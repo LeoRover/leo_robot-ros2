@@ -20,6 +20,10 @@
     default=""
     description="Absolute path to the yaml file with firmware parameters to be overrided" />
 
+  <arg name="publish_odom_tf"
+    default="true"
+    description="Whether to publish odom -> base_footprint TF" />
+
   <!-- This sets leo_hardware_version -->
   <include file="$(find-pkg-share leo_bringup)/launch/find_hardware_version.launch.py" />
 
@@ -54,7 +58,7 @@
   </node>
 
   <node pkg="leo_filters" exec="odom_filter">
-    <param from="$(find-pkg-share leo_bringup)/config/odom_filter.yaml" />
+    <param name="publish_tf" value="$(var publish_odom_tf)" />
   </node>
 
   <let if="$(var mecanum_wheels)" name="firmware_default_params_file"
@@ -74,7 +78,7 @@
 
   <!-- Leo Rover v1.9 or later -->
   <let if="$(eval $(var leo_hardware_version)==2)" name="camera_config_file"
-  value="$(find-pkg-share leo_bringup)/config/leo_camera_imx477.yaml" />
+    value="$(find-pkg-share leo_bringup)/config/leo_camera_imx477.yaml" />
   <set_env if="$(eval $(var leo_hardware_version)==2)" name="LIBCAMERA_RPI_TUNING_FILE"
     value="$(find-pkg-share leo_bringup)/camera_tuning_files/Arducam-477M-Pi5.json" />
 
