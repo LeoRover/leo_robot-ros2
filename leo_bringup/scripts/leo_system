@@ -15,9 +15,11 @@ class LeoSystem(Node):
 
         self.shutdown_scheduled = False
 
-        self.reboot_srv = self.create_service(Trigger, "~/reboot", self.reboot_callback)
+        self.reboot_srv = self.create_service(
+            Trigger, "system/reboot", self.reboot_callback
+        )
         self.shutdown_srv = self.create_service(
-            Trigger, "~/shutdown", self.shutdown_callback
+            Trigger, "system/shutdown", self.shutdown_callback
         )
         self.publish_namespace()
         self.get_logger().info("Leo system node started!")
