@@ -5,29 +5,58 @@ import os
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy
-from std_msgs.msg import Empty
 from std_msgs.msg import String
+from std_srvs.srv import Trigger
 
 
 class LeoSystem(Node):
     def __init__(self):
-        super().__init__("leo_system")
-        self.reboot_sub = self.create_subscription(
-            Empty, "system/shutdown", self.shutdown_callback, 1
+        super().__init__("leo_system", start_parameter_services=False)
+
+        self.shutdown_scheduled = False
+
+        self.reboot_srv = self.create_service(
+            Trigger, "system/reboot", self.reboot_callback
         )
-        self.shutdown_sub = self.create_subscription(
-            Empty, "system/reboot", self.reboot_callback, 1
+        self.shutdown_srv = self.create_service(
+            Trigger, "system/shutdown", self.shutdown_callback
         )
         self.publish_namespace()
         self.get_logger().info("Leo system node started!")
 
-    def reboot_callback(self, data):
-        self.get_logger().info("Reboot command invoked")
-        os.system("systemctl reboot")
+    def reboot_callback(self, request, response):
+        if self.shutdown_scheduled:
+            response.success = False
+            response.message = "System is already scheduled to shutdown"
+            return response
 
-    def shutdown_callback(self, data):
-        self.get_logger().info("Shutdown command invoked")
-        os.system("systemctl poweroff")
+        self.shutdown_scheduled = True
+
+        log_msg = "System scheduled to reboot in 3 seconds"
+        self.get_logger().info(log_msg)
+        response.success = True
+        response.message = log_msg
+
+        self.create_timer(3.0, self.reboot_system)
+
+        return response
+
+    def shutdown_callback(self, request, response):
+        if self.shutdown_scheduled:
+            response.success = False
+            response.message = "System is already scheduled to shutdown"
+            return response
+
+        self.shutdown_scheduled = True
+
+        log_msg = "System scheduled to shut down in 3 seconds"
+        self.get_logger().info(log_msg)
+        response.success = True
+        response.message = log_msg
+
+        self.create_timer(3.0, self.shutdown_system)
+
+        return response
 
     def publish_namespace(self):
         latching_qos = QoSProfile(
@@ -37,14 +66,26 @@ class LeoSystem(Node):
         namespace_pub = self.create_publisher(
             String, "robot_namespace", qos_profile=latching_qos
         )
-        
+
         namespace = self.get_namespace()
-        if not namespace.endswith('/'):
-            namespace += '/'
+        if not namespace.endswith("/"):
+            namespace += "/"
 
         msg = String()
         msg.data = namespace
         namespace_pub.publish(msg)
+
+    def reboot_system(self):
+        self.get_logger().info("Performing system reboot...")
+        os.system("systemctl reboot")
+        self.get_logger().info("Shutting down node...")
+        rclpy.shutdown()
+
+    def shutdown_system(self):
+        self.get_logger().info("Performing system shutdown...")
+        os.system("systemctl poweroff")
+        self.get_logger().info("Shutting down node...")
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
