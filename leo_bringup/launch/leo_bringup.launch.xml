@@ -90,6 +90,7 @@
       name="camera"
       pkg="leo_camera"
       plugin="leo_camera::CameraNode">
+      <param name="frame_id" value="$(var tf_frame_prefix)camera_optical_frame" />
       <param from="$(var camera_config_file)" />
       <extra_arg name="use_intra_process_comms" value="true" />
     </composable_node>
