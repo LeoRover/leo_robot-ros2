@@ -27,12 +27,13 @@
 #include "geometry_msgs/msg/vector3.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "std_srvs/srv/trigger.hpp"
 #include "tf2/LinearMath/Matrix3x3.hpp"
 
 #include "imu_filter.hpp"
 
 using namespace std::chrono_literals;
-using std::placeholders::_1;
+using namespace std::placeholders;
 
 namespace leo_filters
 {
@@ -57,13 +58,9 @@ ImuFilter::ImuFilter(rclcpp::NodeOptions options)
 
   rpy_pub_ = create_publisher<geometry_msgs::msg::Vector3Stamped>("imu/rpy", 5);
 
-  rclcpp::SubscriptionOptions sub_opts;
-  sub_opts.qos_overriding_options = rclcpp::QosOverridingOptions{{
-    rclcpp::QosPolicyKind::Depth,
-    rclcpp::QosPolicyKind::Durability,
-    rclcpp::QosPolicyKind::History,
-    rclcpp::QosPolicyKind::Reliability,
-  }};
+  reset_calibration_srv_ = create_service<std_srvs::srv::Trigger>(
+    "~/reset_calibration", std::bind(
+    &ImuFilter::reset_calibration_callback, this, _1, _2));
 
   if (params_.do_save_bias) {
     load_bias();
@@ -71,6 +68,14 @@ ImuFilter::ImuFilter(rclcpp::NodeOptions options)
       create_wall_timer(std::chrono::seconds(params_.bias_save_period),
         std::bind(&ImuFilter::save_bias, this));
   }
+
+  rclcpp::SubscriptionOptions sub_opts;
+  sub_opts.qos_overriding_options = rclcpp::QosOverridingOptions{{
+    rclcpp::QosPolicyKind::Depth,
+    rclcpp::QosPolicyKind::Durability,
+    rclcpp::QosPolicyKind::History,
+    rclcpp::QosPolicyKind::Reliability,
+  }};
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "imu/data_raw", 10,
@@ -227,6 +232,25 @@ void ImuFilter::imu_callback(sensor_msgs::msg::Imu::SharedPtr msg)
   filter_.update(a.x, a.y, a.z, w.x, w.y, w.z, dt);
 
   publish(msg);
+}
+
+void ImuFilter::reset_calibration_callback(
+  const std_srvs::srv::Trigger::Request::SharedPtr req,
+  std_srvs::srv::Trigger::Response::SharedPtr res)
+{
+  filter_.setAngularVelocityBiasX(0.0);
+  filter_.setAngularVelocityBiasY(0.0);
+  filter_.setAngularVelocityBiasZ(0.0);
+
+  RCLCPP_INFO(get_logger(), "IMU calibration reset.");
+
+  if (params_.do_save_bias) {
+    save_bias();
+    bias_save_timer_->reset();
+  }
+
+  res->success = true;
+  res->message = "IMU calibration reset successfully.";
 }
 
 void ImuFilter::publish(sensor_msgs::msg::Imu::SharedPtr imu_msg)

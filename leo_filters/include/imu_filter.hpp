@@ -40,6 +40,9 @@ public:
 
 private:
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
+  void reset_calibration_callback(
+    const std_srvs::srv::Trigger::Request::SharedPtr req,
+    std_srvs::srv::Trigger::Response::SharedPtr res);
   std::string get_bias_file_path();
   void load_bias();
   void save_bias();
@@ -54,6 +57,9 @@ private:
   // Publishers
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr rpy_pub_;
+
+  // Services
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_calibration_srv_;
 
   // Timers
   rclcpp::TimerBase::SharedPtr bias_save_timer_;
