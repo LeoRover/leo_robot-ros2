@@ -39,7 +39,7 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
     "imu/data", rclcpp::QoS(5).best_effort(),
     std::bind(&OdomFilter::imu_callback, this, _1));
   wheel_odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-    "wheel_odom_with_covariance", rclcpp::QoS(5).best_effort(),
+    "wheel_odom", rclcpp::QoS(5).best_effort(),
     std::bind(&OdomFilter::odom_callback, this, _1));
 
   broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
