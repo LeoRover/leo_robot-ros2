@@ -174,7 +174,7 @@ private:
     if (wheel_odom_pub_ && wheel_odom_publishers == 0) {
       RCLCPP_INFO(
         get_logger(), "firmware/wheel_odom topic no longer has any publishers. "
-        "Shutting down wheel_odom_with_covariance publisher.");
+        "Shutting down wheel_odom publisher.");
       wheel_odom_sub_.reset();
       wheel_odom_pub_.reset();
     }
@@ -182,8 +182,8 @@ private:
     if (!wheel_odom_pub_ && wheel_odom_publishers > 0) {
       RCLCPP_INFO(
         get_logger(), "Detected a publisher on firmware/wheel_odom topic. "
-        "Starting publishing on wheel_odom_with_covariance topic.");
-      wheel_odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("wheel_odom_with_covariance", 10);
+        "Starting publishing on wheel_odom topic.");
+      wheel_odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("wheel_odom", 10);
       wheel_odom_sub_ = create_subscription<leo_msgs::msg::WheelOdom>(
         wheel_odom_topic_, rclcpp::QoS(5).best_effort(),
         std::bind(&FirmwareMessageConverter::wheel_odom_callback, this, _1));
@@ -195,7 +195,7 @@ private:
       RCLCPP_INFO(
         get_logger(),
         "firmware/wheel_odom_mecanum topic no longer has any publishers. "
-        "Shutting down wheel_odom_with_covariance publisher.");
+        "Shutting down wheel_odom publisher.");
       wheel_odom_mecanum_sub_.reset();
       wheel_odom_mecanum_pub_.reset();
     }
@@ -204,9 +204,8 @@ private:
       RCLCPP_INFO(
         get_logger(),
         "Detected a publisher on firmware/wheel_odom_mecanum topic. "
-        "Starting publishing on wheel_odom_with_covariance topic.");
-      wheel_odom_mecanum_pub_ = create_publisher<nav_msgs::msg::Odometry>(
-        "wheel_odom_with_covariance", 10);
+        "Starting publishing on wheel_odom topic.");
+      wheel_odom_mecanum_pub_ = create_publisher<nav_msgs::msg::Odometry>("wheel_odom", 10);
       wheel_odom_mecanum_sub_ =
         create_subscription<leo_msgs::msg::WheelOdomMecanum>(
         wheel_odom_mecanum_topic_, rclcpp::QoS(5).best_effort(),
