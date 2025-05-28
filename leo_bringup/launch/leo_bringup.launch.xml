@@ -75,6 +75,8 @@
   <!-- Leo Rover v1.8 or earlier -->
   <let if="$(eval $(var leo_hardware_version)==1)" name="camera_config_file"
     value="$(find-pkg-share leo_bringup)/config/leo_camera_ov5647.yaml" />
+  <set_env if="$(eval $(var leo_hardware_version)==1)" name="LIBCAMERA_RPI_TUNING_FILE"
+    value="/usr/share/libcamera/ipa/rpi/vc4/ov5647_noir.json" />
 
   <!-- Leo Rover v1.9 or later -->
   <let if="$(eval $(var leo_hardware_version)==2)" name="camera_config_file"
