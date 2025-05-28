@@ -1,6 +1,6 @@
 image_width: 1024
 image_height: 768
-camera_name: leo_camera
+camera_name: imx477__base_axi_pcie_120000_rp1_i2c_88000_imx477_1a_1024x768
 camera_matrix:
   rows: 3
   cols: 3
