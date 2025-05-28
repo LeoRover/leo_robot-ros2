@@ -1,20 +1,28 @@
-image_width: 640
-image_height: 480
-camera_name: leo_camera
+image_width: 1024
+image_height: 768
+camera_name: ov5647__base_soc_i2c0mux_i2c_1_ov5647_36_1024x768
 camera_matrix:
   rows: 3
   cols: 3
-  data: [340.125829, 0.0, 305.876356, 0.0, 340.218367, 232.102630, 0.0, 0.0, 1.0]
+  data: [591.81068730898744, 0, 511.5, 0, 591.4454918512472, 383.5, 0, 0, 1]
 distortion_model: plumb_bob
 distortion_coefficients:
   rows: 1
   cols: 5
-  data: [-0.279817, 0.060321, 0.000487, 0.000310, 0.0]
+  data: [-0.28960344297383411, 0.064191227836625966, 0.0024141728275644063, 0.001502341916235058, 0]
 rectification_matrix:
   rows: 3
   cols: 3
-  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
 projection_matrix:
   rows: 3
   cols: 4
-  data: [229.593124, 0.0, 306.592114, 0.0, 0.0, 230.163239, 232.805671, 0.0, 0.0, 0.0, 1.0, 0.0]
+  data: [423.12026977539062, 0, 516.97852163275456, 0, 0, 504.55294799804688, 386.25101480840749, 0, 0, 0, 1, 0]
+binning_x: 0
+binning_y: 0
+roi:
+  x_offset: 0
+  y_offset: 0
+  height: 0
+  width: 0
+  do_rectify: false
