@@ -87,7 +87,10 @@ def flash_firmware(
 
     if uros_agent_running and (board_type is None or check_version):
         write_flush("--> Initializing ROS node.. ")
-        node = DirectNode(Namespace(node_name_suffix="firmware_flasher", spin_time=3.0))
+        node_wrapper = DirectNode(
+            Namespace(node_name_suffix="firmware_flasher", spin_time=3.0)
+        )
+        node = node_wrapper.node
         print_ok("DONE")
 
     #####################################################
