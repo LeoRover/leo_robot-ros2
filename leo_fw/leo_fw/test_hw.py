@@ -304,7 +304,10 @@ def test_hw(
     hardware: TestMode = TestMode.ALL,
 ) -> None:
     write_flush("--> Initializing ROS node.. ")
-    node = DirectNode(Namespace(node_name_suffix="firmware_tester", spin_time=3.0))
+    node_wrapper = DirectNode(
+        Namespace(node_name_suffix="firmware_tester", spin_time=3.0)
+    )
+    node = node_wrapper.node
     print_ok("DONE")
 
     write_flush("--> Initializing Hardware Tester.. ")
