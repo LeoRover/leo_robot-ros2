@@ -202,16 +202,27 @@ void ImuFilter::update_filter_params()
     }
   }
 
-  if (filter_.getAngularVelocityThreshold() != params_.angular_velocity_threshold) {
-    filter_.setAngularVelocityThreshold(params_.angular_velocity_threshold);
+  if (filter_.getSteadyStateAngularVelocityThreshold() !=
+    params_.steady_state_angular_velocity_threshold)
+  {
+    filter_.setSteadyStateAngularVelocityThreshold(params_.steady_state_angular_velocity_threshold);
   }
 
-  if (filter_.getAccelerationThreshold() != params_.acceleration_threshold) {
-    filter_.setAccelerationThreshold(params_.acceleration_threshold);
+  if (filter_.getSteadyStateAccelerationThreshold() !=
+    params_.steady_state_acceleration_threshold)
+  {
+    filter_.setSteadyStateAccelerationThreshold(params_.steady_state_acceleration_threshold);
   }
 
-  if (filter_.getDeltaAngularVelocityThreshold() != params_.delta_angular_velocity_threshold) {
-    filter_.setDeltaAngularVelocityThreshold(params_.delta_angular_velocity_threshold);
+  if (filter_.getSteadyStateDeltaAngularVelocityThreshold() !=
+    params_.steady_state_delta_angular_velocity_threshold)
+  {
+    filter_.setSteadyStateDeltaAngularVelocityThreshold(
+        params_.steady_state_delta_angular_velocity_threshold);
+  }
+
+  if (filter_.getSteadyStateRequiredSteadyTime() != params_.steady_state_required_steady_time) {
+    filter_.setSteadyStateRequiredSteadyTime(params_.steady_state_required_steady_time);
   }
 }
 

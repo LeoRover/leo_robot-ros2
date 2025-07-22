@@ -45,12 +45,11 @@ ComplementaryFilter::ComplementaryFilter()
   bias_alpha_{0.01},
   do_bias_estimation_{true},
   do_adaptive_gain_{},
-  angular_velocity_threshold_{0.2},
-  acceleration_threshold_{0.1},
-  delta_angular_velocity_threshold_{0.01},
-  required_steady_time_{1.0},
-  steady_start_time_{std::chrono::steady_clock::now()},
-  in_steady_timer_{false},
+  steady_state_angular_velocity_threshold_{0.05},
+  steady_state_acceleration_threshold_{0.1},
+  steady_state_delta_angular_velocity_threshold_{0.01},
+  steady_state_required_steady_time_{1.0},
+  steady_start_time_{std::nullopt},
   initialized_{},
   steady_state_{},
   q0_{1},
@@ -161,44 +160,44 @@ void ComplementaryFilter::setAngularVelocityBiasZ(double bias)
   wz_bias_ = bias;
 }
 
-double ComplementaryFilter::getAngularVelocityThreshold() const
+double ComplementaryFilter::getSteadyStateAngularVelocityThreshold() const
 {
-  return angular_velocity_threshold_;
+  return steady_state_angular_velocity_threshold_;
 }
 
-void ComplementaryFilter::setAngularVelocityThreshold(double threshold)
+void ComplementaryFilter::setSteadyStateAngularVelocityThreshold(double threshold)
 {
-  angular_velocity_threshold_ = threshold;
+  steady_state_angular_velocity_threshold_ = threshold;
 }
 
-double ComplementaryFilter::getAccelerationThreshold() const
+double ComplementaryFilter::getSteadyStateAccelerationThreshold() const
 {
-  return acceleration_threshold_;
+  return steady_state_acceleration_threshold_;
 }
 
-void ComplementaryFilter::setAccelerationThreshold(double threshold)
+void ComplementaryFilter::setSteadyStateAccelerationThreshold(double threshold)
 {
-  acceleration_threshold_ = threshold;
+  steady_state_acceleration_threshold_ = threshold;
 }
 
-double ComplementaryFilter::getDeltaAngularVelocityThreshold() const
+double ComplementaryFilter::getSteadyStateDeltaAngularVelocityThreshold() const
 {
-  return delta_angular_velocity_threshold_;
+  return steady_state_delta_angular_velocity_threshold_;
 }
 
-void ComplementaryFilter::setDeltaAngularVelocityThreshold(double threshold)
+void ComplementaryFilter::setSteadyStateDeltaAngularVelocityThreshold(double threshold)
 {
-  delta_angular_velocity_threshold_ = threshold;
+  steady_state_delta_angular_velocity_threshold_ = threshold;
 }
 
-double ComplementaryFilter::getRequiredSteadyTime() const
+double ComplementaryFilter::getSteadyStateRequiredSteadyTime() const
 {
-  return required_steady_time_;
+  return steady_state_required_steady_time_;
 }
 
-void ComplementaryFilter::setRequiredSteadyTime(double required_steady_time)
+void ComplementaryFilter::setSteadyStateRequiredSteadyTime(double required_steady_time)
 {
-  required_steady_time_ = required_steady_time;
+  steady_state_required_steady_time_ = required_steady_time;
 }
 
 void ComplementaryFilter::update(
@@ -250,20 +249,20 @@ bool ComplementaryFilter::checkState(
 {
   bool currently_steady = true;
   double acc_magnitude = sqrt(ax * ax + ay * ay + az * az);
-  if (fabs(acc_magnitude - kGravity) > acceleration_threshold_) {
+  if (fabs(acc_magnitude - kGravity) > steady_state_acceleration_threshold_) {
     currently_steady = false;
   }
 
-  if (fabs(wx - wx_prev_) > delta_angular_velocity_threshold_ ||
-    fabs(wy - wy_prev_) > delta_angular_velocity_threshold_ ||
-    fabs(wz - wz_prev_) > delta_angular_velocity_threshold_)
+  if (fabs(wx - wx_prev_) > steady_state_delta_angular_velocity_threshold_ ||
+    fabs(wy - wy_prev_) > steady_state_delta_angular_velocity_threshold_ ||
+    fabs(wz - wz_prev_) > steady_state_delta_angular_velocity_threshold_)
   {
     currently_steady = false;
   }
 
-  if (fabs(wx - wx_bias_) > angular_velocity_threshold_ ||
-    fabs(wy - wy_bias_) > angular_velocity_threshold_ ||
-    fabs(wz - wz_bias_) > angular_velocity_threshold_)
+  if (fabs(wx - wx_bias_) > steady_state_angular_velocity_threshold_ ||
+    fabs(wy - wy_bias_) > steady_state_angular_velocity_threshold_ ||
+    fabs(wz - wz_bias_) > steady_state_angular_velocity_threshold_)
   {
     currently_steady = false;
   }
@@ -271,17 +270,16 @@ bool ComplementaryFilter::checkState(
   auto now = std::chrono::steady_clock::now();
 
   if (currently_steady) {
-    if (!in_steady_timer_) {
+    if (!steady_start_time_.has_value()) {
       steady_start_time_ = now;
-      in_steady_timer_ = true;
       return false;
     } else {
       auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now -
           steady_start_time_);
-      return duration.count() >= required_steady_time_;
+      return duration.count() >= steady_state_required_steady_time_;
     }
   } else {
-    in_steady_timer_ = false;
+    steady_start_time_ = std::nullopt;
     return false;
   }
 }

@@ -33,6 +33,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 
 namespace imu_tools
 {
@@ -68,17 +69,17 @@ public:
   double getAngularVelocityBiasZ() const;
   void setAngularVelocityBiasZ(double bias);
 
-  double getAngularVelocityThreshold() const;
-  void setAngularVelocityThreshold(double threshold);
+  double getSteadyStateAngularVelocityThreshold() const;
+  void setSteadyStateAngularVelocityThreshold(double threshold);
 
-  double getAccelerationThreshold() const;
-  void setAccelerationThreshold(double threshold);
+  double getSteadyStateAccelerationThreshold() const;
+  void setSteadyStateAccelerationThreshold(double threshold);
 
-  double getDeltaAngularVelocityThreshold() const;
-  void setDeltaAngularVelocityThreshold(double threshold);
+  double getSteadyStateDeltaAngularVelocityThreshold() const;
+  void setSteadyStateDeltaAngularVelocityThreshold(double threshold);
 
-  double getRequiredSteadyTime() const;
-  void setRequiredSteadyTime(double required_steady_time);
+  double getSteadyStateRequiredSteadyTime() const;
+  void setSteadyStateRequiredSteadyTime(double required_steady_time);
 
   // Set the orientation, as a Hamilton Quaternion, of the body frame wrt the
   // fixed frame.
@@ -114,19 +115,19 @@ private:
 
   // Bias estimation thresholds:
   // Parameter for threshold of the angular velocity
-  double angular_velocity_threshold_;
+  double steady_state_angular_velocity_threshold_;
 
   // Parameter for threshold of the acceleration
-  double acceleration_threshold_;
+  double steady_state_acceleration_threshold_;
 
   // Parameter for threshold of the delta angular velocity
-  double delta_angular_velocity_threshold_;
+  double steady_state_delta_angular_velocity_threshold_;
 
   // Time required to be in steady state before bias estimation is performed.
-  double required_steady_time_;
+  double steady_state_required_steady_time_;
 
-  std::chrono::steady_clock::time_point steady_start_time_;
-  bool in_steady_timer_;
+  // Steady state start time.
+  std::optional<std::chrono::steady_clock::time_point> steady_start_time_;
 
   bool initialized_;
   bool steady_state_;
