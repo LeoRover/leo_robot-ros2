@@ -32,6 +32,9 @@
 
 #pragma once
 
+#include <chrono>
+#include <optional>
+
 namespace imu_tools
 {
 
@@ -66,6 +69,18 @@ public:
   double getAngularVelocityBiasZ() const;
   void setAngularVelocityBiasZ(double bias);
 
+  double getSteadyStateAngularVelocityThreshold() const;
+  void setSteadyStateAngularVelocityThreshold(double threshold);
+
+  double getSteadyStateAccelerationThreshold() const;
+  void setSteadyStateAccelerationThreshold(double threshold);
+
+  double getSteadyStateDeltaAngularVelocityThreshold() const;
+  void setSteadyStateDeltaAngularVelocityThreshold(double threshold);
+
+  double getSteadyStateRequiredSteadyTime() const;
+  void setSteadyStateRequiredSteadyTime(double required_steady_time);
+
   // Set the orientation, as a Hamilton Quaternion, of the body frame wrt the
   // fixed frame.
   void setOrientation(double q0, double q1, double q2, double q3);
@@ -85,10 +100,6 @@ public:
 private:
   static const double kGravity;
   static const double gamma_;
-  // Bias estimation steady state thresholds
-  static const double kAngularVelocityThreshold;
-  static const double kAccelerationThreshold;
-  static const double kDeltaAngularVelocityThreshold;
 
   // Gain parameter for the complementary filter, belongs in [0, 1].
   double gain_acc_;
@@ -101,6 +112,22 @@ private:
 
   // Parameter whether to do adaptive gain or not.
   bool do_adaptive_gain_;
+
+  // Bias estimation thresholds:
+  // Parameter for threshold of the angular velocity
+  double steady_state_angular_velocity_threshold_;
+
+  // Parameter for threshold of the acceleration
+  double steady_state_acceleration_threshold_;
+
+  // Parameter for threshold of the delta angular velocity
+  double steady_state_delta_angular_velocity_threshold_;
+
+  // Time required to be in steady state before bias estimation is performed.
+  double steady_state_required_steady_time_;
+
+  // Steady state start time.
+  std::optional<std::chrono::steady_clock::time_point> steady_start_time_;
 
   bool initialized_;
   bool steady_state_;
@@ -121,7 +148,7 @@ private:
 
   bool checkState(
     double ax, double ay, double az, double wx, double wy,
-    double wz) const;
+    double wz);
 
   void getPrediction(
     double wx, double wy, double wz, double dt,

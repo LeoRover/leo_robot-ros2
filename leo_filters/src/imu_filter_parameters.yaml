@@ -42,4 +42,31 @@ imu_filter:
     read_only: true
     validation:
       bounds<>: [1, 600]
-  
+  steady_state_angular_velocity_threshold:
+    type: double
+    default_value: 0.05
+    description: "Threshold for the angular velocity to determine whether the IMU is in steady state."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  steady_state_acceleration_threshold:
+    type: double
+    default_value: 0.1
+    description: "Threshold for the acceleration to determine whether the IMU is in steady state."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  steady_state_delta_angular_velocity_threshold:
+    type: double
+    default_value: 0.01
+    description: "Threshold for the change in angular velocity to determine whether the IMU is in steady state."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  steady_state_required_steady_time:
+    type: double
+    default_value: 1.0
+    description: "How long should the IMU reading meet the steady thresholds before it's determined to be in steady state (in seconds)."
+    read_only: false
+    validation:
+      gt<>: [0.0]

@@ -39,16 +39,17 @@ namespace imu_tools
 
 const double ComplementaryFilter::kGravity = 9.81;
 const double ComplementaryFilter::gamma_ = 0.01;
-// Bias estimation steady state thresholds
-const double ComplementaryFilter::kAngularVelocityThreshold = 0.2;
-const double ComplementaryFilter::kAccelerationThreshold = 0.1;
-const double ComplementaryFilter::kDeltaAngularVelocityThreshold = 0.01;
 
 ComplementaryFilter::ComplementaryFilter()
 : gain_acc_{0.01},
   bias_alpha_{0.01},
   do_bias_estimation_{true},
   do_adaptive_gain_{},
+  steady_state_angular_velocity_threshold_{0.05},
+  steady_state_acceleration_threshold_{0.1},
+  steady_state_delta_angular_velocity_threshold_{0.01},
+  steady_state_required_steady_time_{1.0},
+  steady_start_time_{std::nullopt},
   initialized_{},
   steady_state_{},
   q0_{1},
@@ -159,6 +160,46 @@ void ComplementaryFilter::setAngularVelocityBiasZ(double bias)
   wz_bias_ = bias;
 }
 
+double ComplementaryFilter::getSteadyStateAngularVelocityThreshold() const
+{
+  return steady_state_angular_velocity_threshold_;
+}
+
+void ComplementaryFilter::setSteadyStateAngularVelocityThreshold(double threshold)
+{
+  steady_state_angular_velocity_threshold_ = threshold;
+}
+
+double ComplementaryFilter::getSteadyStateAccelerationThreshold() const
+{
+  return steady_state_acceleration_threshold_;
+}
+
+void ComplementaryFilter::setSteadyStateAccelerationThreshold(double threshold)
+{
+  steady_state_acceleration_threshold_ = threshold;
+}
+
+double ComplementaryFilter::getSteadyStateDeltaAngularVelocityThreshold() const
+{
+  return steady_state_delta_angular_velocity_threshold_;
+}
+
+void ComplementaryFilter::setSteadyStateDeltaAngularVelocityThreshold(double threshold)
+{
+  steady_state_delta_angular_velocity_threshold_ = threshold;
+}
+
+double ComplementaryFilter::getSteadyStateRequiredSteadyTime() const
+{
+  return steady_state_required_steady_time_;
+}
+
+void ComplementaryFilter::setSteadyStateRequiredSteadyTime(double required_steady_time)
+{
+  steady_state_required_steady_time_ = required_steady_time;
+}
+
 void ComplementaryFilter::update(
   double ax, double ay, double az, double wx,
   double wy, double wz, double dt)
@@ -204,26 +245,43 @@ void ComplementaryFilter::update(
 
 bool ComplementaryFilter::checkState(
   double ax, double ay, double az, double wx,
-  double wy, double wz) const
+  double wy, double wz)
 {
+  bool currently_steady = true;
   double acc_magnitude = sqrt(ax * ax + ay * ay + az * az);
-  if (fabs(acc_magnitude - kGravity) > kAccelerationThreshold) {return false;}
-
-  if (fabs(wx - wx_prev_) > kDeltaAngularVelocityThreshold ||
-    fabs(wy - wy_prev_) > kDeltaAngularVelocityThreshold ||
-    fabs(wz - wz_prev_) > kDeltaAngularVelocityThreshold)
-  {
-    return false;
+  if (fabs(acc_magnitude - kGravity) > steady_state_acceleration_threshold_) {
+    currently_steady = false;
   }
 
-  if (fabs(wx - wx_bias_) > kAngularVelocityThreshold ||
-    fabs(wy - wy_bias_) > kAngularVelocityThreshold ||
-    fabs(wz - wz_bias_) > kAngularVelocityThreshold)
+  if (fabs(wx - wx_prev_) > steady_state_delta_angular_velocity_threshold_ ||
+    fabs(wy - wy_prev_) > steady_state_delta_angular_velocity_threshold_ ||
+    fabs(wz - wz_prev_) > steady_state_delta_angular_velocity_threshold_)
   {
-    return false;
+    currently_steady = false;
   }
 
-  return true;
+  if (fabs(wx - wx_bias_) > steady_state_angular_velocity_threshold_ ||
+    fabs(wy - wy_bias_) > steady_state_angular_velocity_threshold_ ||
+    fabs(wz - wz_bias_) > steady_state_angular_velocity_threshold_)
+  {
+    currently_steady = false;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+
+  if (currently_steady) {
+    if (!steady_start_time_.has_value()) {
+      steady_start_time_ = now;
+      return false;
+    } else {
+      auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now -
+          steady_start_time_.value());
+      return duration.count() >= steady_state_required_steady_time_;
+    }
+  } else {
+    steady_start_time_ = std::nullopt;
+    return false;
+  }
 }
 
 void ComplementaryFilter::updateBiases(
