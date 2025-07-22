@@ -201,6 +201,18 @@ void ImuFilter::update_filter_params()
         "Invalid bias_alpha passed to ComplementaryFilter.");
     }
   }
+
+  if (filter_.getAngularVelocityThreshold() != params_.angular_velocity_threshold) {
+    filter_.setAngularVelocityThreshold(params_.angular_velocity_threshold);
+  }
+
+  if (filter_.getAccelerationThreshold() != params_.acceleration_threshold) {
+    filter_.setAccelerationThreshold(params_.acceleration_threshold);
+  }
+
+  if (filter_.getDeltaAngularVelocityThreshold() != params_.delta_angular_velocity_threshold) {
+    filter_.setDeltaAngularVelocityThreshold(params_.delta_angular_velocity_threshold);
+  }
 }
 
 void ImuFilter::check_dynamic_parameters()
@@ -230,6 +242,10 @@ void ImuFilter::imu_callback(sensor_msgs::msg::Imu::SharedPtr msg)
   prev_time_ = current_time;
 
   filter_.update(a.x, a.y, a.z, w.x, w.y, w.z, dt);
+
+  if (filter_.getSteadyState()) {
+    RCLCPP_INFO(get_logger(), "Complementary filter in steady state.");
+  }
 
   publish(msg);
 }

@@ -7,3 +7,6 @@
     orientation_variance: 0.001
     bias_save_period: 120
     do_save_bias: true
+    angular_velocity_threshold: 0.2
+    acceleration_threshold: 0.1
+    delta_angular_velocity_threshold: 0.01

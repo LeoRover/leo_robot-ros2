@@ -39,16 +39,15 @@ namespace imu_tools
 
 const double ComplementaryFilter::kGravity = 9.81;
 const double ComplementaryFilter::gamma_ = 0.01;
-// Bias estimation steady state thresholds
-const double ComplementaryFilter::kAngularVelocityThreshold = 0.2;
-const double ComplementaryFilter::kAccelerationThreshold = 0.1;
-const double ComplementaryFilter::kDeltaAngularVelocityThreshold = 0.01;
 
 ComplementaryFilter::ComplementaryFilter()
 : gain_acc_{0.01},
   bias_alpha_{0.01},
   do_bias_estimation_{true},
   do_adaptive_gain_{},
+  angular_velocity_threshold_{0.2},
+  acceleration_threshold_{0.1},
+  delta_angular_velocity_threshold_{0.01},
   initialized_{},
   steady_state_{},
   q0_{1},
@@ -159,6 +158,36 @@ void ComplementaryFilter::setAngularVelocityBiasZ(double bias)
   wz_bias_ = bias;
 }
 
+double ComplementaryFilter::getAngularVelocityThreshold() const
+{
+  return angular_velocity_threshold_;
+}
+
+void ComplementaryFilter::setAngularVelocityThreshold(double threshold)
+{
+  angular_velocity_threshold_ = threshold;
+}
+
+double ComplementaryFilter::getAccelerationThreshold() const
+{
+  return acceleration_threshold_;
+}
+
+void ComplementaryFilter::setAccelerationThreshold(double threshold)
+{
+  acceleration_threshold_ = threshold;
+}
+
+double ComplementaryFilter::getDeltaAngularVelocityThreshold() const
+{
+  return delta_angular_velocity_threshold_;
+}
+
+void ComplementaryFilter::setDeltaAngularVelocityThreshold(double threshold)
+{
+  delta_angular_velocity_threshold_ = threshold;
+}
+
 void ComplementaryFilter::update(
   double ax, double ay, double az, double wx,
   double wy, double wz, double dt)
@@ -207,18 +236,18 @@ bool ComplementaryFilter::checkState(
   double wy, double wz) const
 {
   double acc_magnitude = sqrt(ax * ax + ay * ay + az * az);
-  if (fabs(acc_magnitude - kGravity) > kAccelerationThreshold) {return false;}
+  if (fabs(acc_magnitude - kGravity) > acceleration_threshold_) {return false;}
 
-  if (fabs(wx - wx_prev_) > kDeltaAngularVelocityThreshold ||
-    fabs(wy - wy_prev_) > kDeltaAngularVelocityThreshold ||
-    fabs(wz - wz_prev_) > kDeltaAngularVelocityThreshold)
+  if (fabs(wx - wx_prev_) > delta_angular_velocity_threshold_ ||
+    fabs(wy - wy_prev_) > delta_angular_velocity_threshold_ ||
+    fabs(wz - wz_prev_) > delta_angular_velocity_threshold_)
   {
     return false;
   }
 
-  if (fabs(wx - wx_bias_) > kAngularVelocityThreshold ||
-    fabs(wy - wy_bias_) > kAngularVelocityThreshold ||
-    fabs(wz - wz_bias_) > kAngularVelocityThreshold)
+  if (fabs(wx - wx_bias_) > angular_velocity_threshold_ ||
+    fabs(wy - wy_bias_) > angular_velocity_threshold_ ||
+    fabs(wz - wz_bias_) > angular_velocity_threshold_)
   {
     return false;
   }

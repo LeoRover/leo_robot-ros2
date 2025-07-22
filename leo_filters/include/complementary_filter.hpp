@@ -66,6 +66,15 @@ public:
   double getAngularVelocityBiasZ() const;
   void setAngularVelocityBiasZ(double bias);
 
+  double getAngularVelocityThreshold() const;
+  void setAngularVelocityThreshold(double threshold);
+
+  double getAccelerationThreshold() const;
+  void setAccelerationThreshold(double threshold);
+
+  double getDeltaAngularVelocityThreshold() const;
+  void setDeltaAngularVelocityThreshold(double threshold);
+
   // Set the orientation, as a Hamilton Quaternion, of the body frame wrt the
   // fixed frame.
   void setOrientation(double q0, double q1, double q2, double q3);
@@ -85,10 +94,6 @@ public:
 private:
   static const double kGravity;
   static const double gamma_;
-  // Bias estimation steady state thresholds
-  static const double kAngularVelocityThreshold;
-  static const double kAccelerationThreshold;
-  static const double kDeltaAngularVelocityThreshold;
 
   // Gain parameter for the complementary filter, belongs in [0, 1].
   double gain_acc_;
@@ -101,6 +106,16 @@ private:
 
   // Parameter whether to do adaptive gain or not.
   bool do_adaptive_gain_;
+
+  // Bias estimation thresholds:
+  // Parameter for threshold of the angular velocity
+  double angular_velocity_threshold_;
+
+  // Parameter for threshold of the acceleration
+  double acceleration_threshold_;
+
+  // Parameter for threshold of the delta angular velocity
+  double delta_angular_velocity_threshold_;
 
   bool initialized_;
   bool steady_state_;
