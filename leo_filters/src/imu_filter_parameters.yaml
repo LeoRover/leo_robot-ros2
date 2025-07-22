@@ -52,14 +52,14 @@ imu_filter:
   steady_state_acceleration_threshold:
     type: double
     default_value: 0.1
-    description: "Threshold for the acceleration to determine if the filter is in steady state."
+    description: "Threshold for the acceleration to determine whether the IMU is in steady state."
     read_only: false
     validation:
       gt<>: [0.0]
   steady_state_delta_angular_velocity_threshold:
     type: double
     default_value: 0.01
-    description: "Threshold for the change in angular velocity to determine if the filter is in steady state."
+    description: "Threshold for the change in angular velocity to determine whether the IMU is in steady state."
     read_only: false
     validation:
       gt<>: [0.0]
