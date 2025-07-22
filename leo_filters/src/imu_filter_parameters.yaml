@@ -63,3 +63,10 @@ imu_filter:
     read_only: false
     validation:
       gt<>: [0.0]
+  required_steady_time:
+    type: double
+    default_value: 1.0
+    description: "Time required to be in steady state before bias estimation is performed (in seconds)."
+    read_only: false
+    validation:
+      gt<>: [0.0]

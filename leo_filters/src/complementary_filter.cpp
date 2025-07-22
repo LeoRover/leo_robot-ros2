@@ -48,6 +48,9 @@ ComplementaryFilter::ComplementaryFilter()
   angular_velocity_threshold_{0.2},
   acceleration_threshold_{0.1},
   delta_angular_velocity_threshold_{0.01},
+  required_steady_time_{1.0},
+  steady_start_time_{std::chrono::steady_clock::now()},
+  in_steady_timer_{false},
   initialized_{},
   steady_state_{},
   q0_{1},
@@ -188,6 +191,16 @@ void ComplementaryFilter::setDeltaAngularVelocityThreshold(double threshold)
   delta_angular_velocity_threshold_ = threshold;
 }
 
+double ComplementaryFilter::getRequiredSteadyTime() const
+{
+  return required_steady_time_;
+}
+
+void ComplementaryFilter::setRequiredSteadyTime(double required_steady_time)
+{
+  required_steady_time_ = required_steady_time;
+}
+
 void ComplementaryFilter::update(
   double ax, double ay, double az, double wx,
   double wy, double wz, double dt)
@@ -235,24 +248,45 @@ bool ComplementaryFilter::checkState(
   double ax, double ay, double az, double wx,
   double wy, double wz) const
 {
+  bool currently_steady = true;
   double acc_magnitude = sqrt(ax * ax + ay * ay + az * az);
-  if (fabs(acc_magnitude - kGravity) > acceleration_threshold_) {return false;}
+  if (fabs(acc_magnitude - kGravity) > acceleration_threshold_) 
+  {
+    currently_steady = false;
+  }
 
   if (fabs(wx - wx_prev_) > delta_angular_velocity_threshold_ ||
     fabs(wy - wy_prev_) > delta_angular_velocity_threshold_ ||
     fabs(wz - wz_prev_) > delta_angular_velocity_threshold_)
   {
-    return false;
+    currently_steady = false;
   }
 
   if (fabs(wx - wx_bias_) > angular_velocity_threshold_ ||
     fabs(wy - wy_bias_) > angular_velocity_threshold_ ||
     fabs(wz - wz_bias_) > angular_velocity_threshold_)
   {
-    return false;
+    currently_steady = false;
   }
 
-  return true;
+  auto now = std::chrono::steady_clock::now();
+
+  if (currently_steady) {
+    if (!in_steady_timer_) {
+      // Just became steady
+      steady_start_time_ = now;
+      in_steady_timer_ = true;
+      return false;
+    } else {
+      // Has been steady for some time
+      auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now - steady_start_time_);
+      return duration.count() >= steady_time_threshold_;
+    }
+  } else {
+    // Reset
+    in_steady_timer_ = false;
+    return false;
+  }
 }
 
 void ComplementaryFilter::updateBiases(

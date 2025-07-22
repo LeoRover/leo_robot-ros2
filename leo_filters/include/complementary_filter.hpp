@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include <chrono>
+
 namespace imu_tools
 {
 
@@ -75,6 +77,9 @@ public:
   double getDeltaAngularVelocityThreshold() const;
   void setDeltaAngularVelocityThreshold(double threshold);
 
+  double getRequiredSteadyTime() const;
+  void setRequiredSteadyTime(double required_steady_time);
+
   // Set the orientation, as a Hamilton Quaternion, of the body frame wrt the
   // fixed frame.
   void setOrientation(double q0, double q1, double q2, double q3);
@@ -116,6 +121,12 @@ private:
 
   // Parameter for threshold of the delta angular velocity
   double delta_angular_velocity_threshold_;
+
+  // Time required to be in steady state before bias estimation is performed.
+  double required_steady_time_;
+
+  std::chrono::steady_clock::time_point steady_start_time_;
+  bool in_steady_timer_;
 
   bool initialized_;
   bool steady_state_;

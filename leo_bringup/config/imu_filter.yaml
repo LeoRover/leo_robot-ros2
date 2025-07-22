@@ -10,3 +10,4 @@
     angular_velocity_threshold: 0.2
     acceleration_threshold: 0.1
     delta_angular_velocity_threshold: 0.01
+    required_steady_time: 1.0
