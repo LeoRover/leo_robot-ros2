@@ -273,17 +273,14 @@ bool ComplementaryFilter::checkState(
 
   if (currently_steady) {
     if (!in_steady_timer_) {
-      // Just became steady
       steady_start_time_ = now;
       in_steady_timer_ = true;
       return false;
     } else {
-      // Has been steady for some time
       auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now - steady_start_time_);
       return duration.count() >= required_steady_time_;
     }
   } else {
-    // Reset
     in_steady_timer_ = false;
     return false;
   }

@@ -243,10 +243,6 @@ void ImuFilter::imu_callback(sensor_msgs::msg::Imu::SharedPtr msg)
 
   filter_.update(a.x, a.y, a.z, w.x, w.y, w.z, dt);
 
-  if (filter_.getSteadyState()) {
-    RCLCPP_INFO(get_logger(), "Complementary filter in steady state.");
-  }
-
   publish(msg);
 }
 
