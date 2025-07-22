@@ -250,8 +250,7 @@ bool ComplementaryFilter::checkState(
 {
   bool currently_steady = true;
   double acc_magnitude = sqrt(ax * ax + ay * ay + az * az);
-  if (fabs(acc_magnitude - kGravity) > acceleration_threshold_) 
-  {
+  if (fabs(acc_magnitude - kGravity) > acceleration_threshold_) {
     currently_steady = false;
   }
 
@@ -277,7 +276,8 @@ bool ComplementaryFilter::checkState(
       in_steady_timer_ = true;
       return false;
     } else {
-      auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now - steady_start_time_);
+      auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now -
+          steady_start_time_);
       return duration.count() >= required_steady_time_;
     }
   } else {
