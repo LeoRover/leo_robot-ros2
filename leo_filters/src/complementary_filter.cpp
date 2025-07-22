@@ -246,7 +246,7 @@ void ComplementaryFilter::update(
 
 bool ComplementaryFilter::checkState(
   double ax, double ay, double az, double wx,
-  double wy, double wz) const
+  double wy, double wz)
 {
   bool currently_steady = true;
   double acc_magnitude = sqrt(ax * ax + ay * ay + az * az);
@@ -280,7 +280,7 @@ bool ComplementaryFilter::checkState(
     } else {
       // Has been steady for some time
       auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now - steady_start_time_);
-      return duration.count() >= steady_time_threshold_;
+      return duration.count() >= required_steady_time_;
     }
   } else {
     // Reset

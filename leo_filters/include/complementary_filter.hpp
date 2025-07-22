@@ -147,7 +147,7 @@ private:
 
   bool checkState(
     double ax, double ay, double az, double wx, double wy,
-    double wz) const;
+    double wz);
 
   void getPrediction(
     double wx, double wy, double wz, double dt,
