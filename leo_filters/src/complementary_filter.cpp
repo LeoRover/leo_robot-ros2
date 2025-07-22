@@ -275,7 +275,7 @@ bool ComplementaryFilter::checkState(
       return false;
     } else {
       auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(now -
-          steady_start_time_);
+          steady_start_time_.value());
       return duration.count() >= steady_state_required_steady_time_;
     }
   } else {
