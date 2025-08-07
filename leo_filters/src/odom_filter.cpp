@@ -47,7 +47,7 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
   client_cb_group_ =
     create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   reset_odom_client_ = create_client<std_srvs::srv::Trigger>(
-    "firmware/reset_odometry", rclcpp::ServicesQoS(),
+    "firmware/reset_odometry", rclcpp::ServicesQoS().get_rmw_qos_profile(),
     client_cb_group_);
   reset_odom_srv_ = create_service<std_srvs::srv::Trigger>(
     "reset_odometry",
