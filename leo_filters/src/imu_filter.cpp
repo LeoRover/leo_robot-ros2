@@ -60,7 +60,7 @@ ImuFilter::ImuFilter(rclcpp::NodeOptions options)
 
   reset_calibration_srv_ = create_service<std_srvs::srv::Trigger>(
     "~/reset_calibration", std::bind(
-    &ImuFilter::reset_calibration_callback, this, _1, _2));
+      &ImuFilter::reset_calibration_callback, this, _1, _2));
 
   if (params_.do_save_bias) {
     load_bias();
@@ -220,7 +220,7 @@ void ImuFilter::update_filter_params()
     params_.steady_state_delta_angular_velocity_threshold)
   {
     filter_.setSteadyStateDeltaAngularVelocityThreshold(
-        params_.steady_state_delta_angular_velocity_threshold);
+      params_.steady_state_delta_angular_velocity_threshold);
   }
 
   if (filter_.getSteadyStateRequiredSteadyTime() != params_.steady_state_required_steady_time) {
