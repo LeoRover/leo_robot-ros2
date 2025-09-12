@@ -7,7 +7,6 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
 find_package(leo_msgs REQUIRED)
 
 include_directories(
@@ -27,7 +26,6 @@ target_link_libraries(leo_fw
 rclcpp_components_register_node(leo_fw
   PLUGIN "leo_fw::FirmwareMessageConverter"
   EXECUTABLE "firmware_message_converter"
-  EXECUTOR "MultiThreadedExecutor"
 )
 
 ament_python_install_package(${PROJECT_NAME})
