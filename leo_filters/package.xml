@@ -1,54 +1,48 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>leo_fw</name>
-  <version>1.5.0</version>
-  <description> Binary releases of Leo Rover firmware and related utilities </description>
+  <name>leo_filters</name>
+  <version>0.0.0</version>
+  <description>Nodes for filtering and processing imu and wheel odom messages.</description>
 
   <maintainer email="support@fictionlab.pl">Fictionlab</maintainer>
 
   <license>MIT</license>
 
-  <url type="website">http://wiki.ros.org/leo_fw</url>
   <url type="bugtracker">https://github.com/LeoRover/leo_robot-ros2/issues</url>
   <url type="repository">https://github.com/LeoRover/leo_robot-ros2</url>
 
-  <author email="blazej@fictionlab.pl">Błażej Sowa</author>
+  <author email="aleks@fictionlab.pl">Aleksander Szymański</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
-
-  <!-- Python -->
-  <exec_depend>ament_index_python</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>python3-dbus</exec_depend>
-  <exec_depend>python3-whichcraft</exec_depend>
-  <exec_depend>python3-yaml</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>ros2cli</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>std_srvs</exec_depend>
 
   <!-- C++ -->
-  <build_depend>leo_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>generate_parameter_library</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>rclcpp</build_depend>
   <build_depend>rclcpp_components</build_depend>
   <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>tf2</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>yaml-cpp</build_depend>
 
-  <exec_depend>leo_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>generate_parameter_library</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
+  <exec_depend>tf2</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>yaml-cpp</exec_depend>
 
   <!-- Test -->
   <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_cmake_black</test_depend>
   <test_depend>ament_cmake_copyright</test_depend>
   <test_depend>ament_cmake_lint_cmake</test_depend>
-  <test_depend>ament_cmake_mypy</test_depend>
   <test_depend>ament_cmake_uncrustify</test_depend>
   <test_depend>ament_cmake_xmllint</test_depend>
 

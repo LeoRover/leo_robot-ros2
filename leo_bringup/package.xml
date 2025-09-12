@@ -34,6 +34,7 @@
 
   <!-- <exec_depend>leo_camera</exec_depend> -->
   <exec_depend>leo_description</exec_depend>
+  <exec_depend>leo_filters</exec_depend>
   <exec_depend>leo_fw</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
