@@ -1,0 +1,24 @@
+/camera:
+  ros__parameters:
+    camera: 0
+    width: 1024
+    height: 768
+    format: BGR888
+    role: video
+    camera_info_url: package://leo_bringup/camera_info/leo_camera_ov5647.yaml
+
+    # 15 FPS
+    FrameDurationLimits: [66666, 66666]
+
+/camera/debayer:
+  ros__parameters:
+    .image_color.compressed.jpeg_quality: 80
+    .image_mono.compressed.jpeg_quality: 80
+
+/camera/rectify_color:
+  ros__parameters:
+    .image_rect.compressed.jpeg_quality: 80
+
+/camera/rectify_mono:
+  ros__parameters:
+    .image_rect.compressed.jpeg_quality: 80

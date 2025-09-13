@@ -1,0 +1,72 @@
+imu_filter:
+  gain_acc:
+    type: double
+    default_value: 0.01
+    description: "Gain for the complementary filter, belongs in [0, 1]."
+    read_only: false
+    validation:
+      bounds<>: [0.0, 1.0]
+  bias_alpha:
+    type: double
+    default_value: 0.01
+    description: "Bias estimation gain, belongs in [0, 1]."
+    read_only: false
+    validation:
+      bounds<>: [0.0, 1.0]
+  do_bias_estimation:
+    type: bool
+    default_value: true
+    description: "Whether to do bias estimation of the angular velocity (gyroscope readings) or not."
+    read_only: false
+  do_adaptive_gain:
+    type: bool
+    default_value: true
+    description: "Whether to do adaptive gain or not."
+    read_only: false
+  orientation_variance:
+    type: double
+    default_value: 0.001
+    description: "Value on the diagonal of orientation covariance matrix."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  do_save_bias:
+    type: bool
+    default_value: false
+    description: "Whether to periodically store the gyroscope bias on the disk and load it upon startup."
+    read_only: true
+  bias_save_period:
+    type: int
+    default_value: 120
+    description: "Time interval between current imu bias save (in seconds)."
+    read_only: true
+    validation:
+      bounds<>: [1, 600]
+  steady_state_angular_velocity_threshold:
+    type: double
+    default_value: 0.05
+    description: "Threshold for the angular velocity to determine whether the IMU is in steady state."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  steady_state_acceleration_threshold:
+    type: double
+    default_value: 0.1
+    description: "Threshold for the acceleration to determine whether the IMU is in steady state."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  steady_state_delta_angular_velocity_threshold:
+    type: double
+    default_value: 0.01
+    description: "Threshold for the change in angular velocity to determine whether the IMU is in steady state."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  steady_state_required_steady_time:
+    type: double
+    default_value: 1.0
+    description: "How long should the IMU reading meet the steady thresholds before it's determined to be in steady state (in seconds)."
+    read_only: false
+    validation:
+      gt<>: [0.0]

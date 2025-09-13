@@ -87,7 +87,10 @@ def flash_firmware(
 
     if uros_agent_running and (board_type is None or check_version):
         write_flush("--> Initializing ROS node.. ")
-        node = DirectNode(Namespace(node_name_suffix="firmware_flasher", spin_time=3.0))
+        node_wrapper = DirectNode(
+            Namespace(node_name_suffix="firmware_flasher", spin_time=3.0)
+        )
+        node = node_wrapper.node
         print_ok("DONE")
 
     #####################################################
@@ -155,7 +158,7 @@ def flash_firmware(
         if board_type == BoardType.CORE2:
             firmware_version = "1.3.0"
         elif board_type == BoardType.LEOCORE:
-            firmware_version = "1.3.0"
+            firmware_version = "2.0.0"
 
     print(f"Current firmware version: {current_firmware_version}")
     print(f"Version of the firmware to flash: {firmware_version}")

@@ -20,6 +20,13 @@
     default=""
     description="Absolute path to the yaml file with firmware parameters to be overrided" />
 
+  <arg name="publish_odom_tf"
+    default="true"
+    description="Whether to publish odom -> base_footprint TF" />
+
+  <!-- This sets leo_hardware_version -->
+  <include file="$(find-pkg-share leo_bringup)/launch/find_hardware_version.launch.py" />
+
   <include if="$(var spawn_state_publisher)"
     file="$(find-pkg-share leo_description)/launch/state_publisher.launch.xml">
     <arg name="model" value="$(var model)" />
@@ -46,6 +53,14 @@
     <param from="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
   </node>
 
+  <node pkg="leo_filters" exec="imu_filter">
+    <param from="$(find-pkg-share leo_bringup)/config/imu_filter.yaml" />
+  </node>
+
+  <node pkg="leo_filters" exec="odom_filter">
+    <param name="publish_tf" value="$(var publish_odom_tf)" />
+  </node>
+
   <let if="$(var mecanum_wheels)" name="firmware_default_params_file"
     value="$(find-pkg-share leo_bringup)/config/firmware_mecanum_params.yaml" />
   <let unless="$(var mecanum_wheels)" name="firmware_default_params_file"
@@ -54,30 +69,45 @@
   <node pkg="leo_fw" exec="firmware_parameter_bridge">
     <param name="default_params_file_path" value="$(var firmware_default_params_file)" />
     <param name="override_params_file_path" value="$(var firmware_override_params_file)" />
+    <param name="leo_hardware_version" value="$(var leo_hardware_version)" />
   </node>
+
+  <!-- Leo Rover v1.8 or earlier -->
+  <let if="$(eval $(var leo_hardware_version)==1)" name="camera_config_file"
+    value="$(find-pkg-share leo_bringup)/config/leo_camera_ov5647.yaml" />
+  <set_env if="$(eval $(var leo_hardware_version)==1)" name="LIBCAMERA_RPI_TUNING_FILE"
+    value="/usr/share/libcamera/ipa/rpi/vc4/ov5647_noir.json" />
+
+  <!-- Leo Rover v1.9 or later -->
+  <let if="$(eval $(var leo_hardware_version)==2)" name="camera_config_file"
+    value="$(find-pkg-share leo_bringup)/config/leo_camera_imx477.yaml" />
+  <set_env if="$(eval $(var leo_hardware_version)==2)" name="LIBCAMERA_RPI_TUNING_FILE"
+    value="$(find-pkg-share leo_bringup)/camera_tuning_files/Arducam-477M-Pi5.json" />
 
   <node_container namespace=""
     name="image_container"
     pkg="rclcpp_components"
     exec="component_container">
-    <composable_node namespace="camera"
-      name="v4l2_camera"
-      pkg="v4l2_camera"
-      plugin="v4l2_camera::V4L2Camera">
-      <param from="$(find-pkg-share leo_bringup)/config/v4l2_camera.yaml" />
-      <param name="camera_frame_id" value="$(var tf_frame_prefix)camera_optical_frame" />
+    <composable_node namespace=""
+      name="camera"
+      pkg="leo_camera"
+      plugin="leo_camera::CameraNode">
+      <param name="frame_id" value="$(var tf_frame_prefix)camera_optical_frame" />
+      <param from="$(var camera_config_file)" />
       <extra_arg name="use_intra_process_comms" value="true" />
     </composable_node>
     <composable_node namespace="camera"
       name="debayer"
       pkg="image_proc"
       plugin="image_proc::DebayerNode">
+      <param from="$(var camera_config_file)" />
       <extra_arg name="use_intra_process_comms" value="true" />
     </composable_node>
     <composable_node namespace="camera"
       name="rectify_mono"
       pkg="image_proc"
       plugin="image_proc::RectifyNode">
+      <param from="$(var camera_config_file)" />
       <extra_arg name="use_intra_process_comms" value="true" />
       <remap from="image" to="image_mono" />
     </composable_node>
@@ -85,6 +115,7 @@
       name="rectify_color"
       pkg="image_proc"
       plugin="image_proc::RectifyNode">
+      <param from="$(var camera_config_file)" />
       <extra_arg name="use_intra_process_comms" value="true" />
       <remap from="image" to="image_color" />
       <remap from="image_rect" to="image_rect_color" />

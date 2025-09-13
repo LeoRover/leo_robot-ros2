@@ -39,16 +39,19 @@ class CSIColor(str, Enum):
 
 
 def is_tool(name: str) -> bool:
-    """!
+    """
     Check whether an executable exists on PATH.
-    @param name Name of the executable
-    @return True if executable exists, False otherwise
+
+    :param name: Name of the executable
+    :type name: str
+    :return: True if executable exists, False otherwise
+    :rtype: bool
     """
     return which(name) is not None
 
 
 def write_flush(msg: str):
-    """!Write a message to standard output and flush the buffer"""
+    """Write a message to standard output and flush the buffer."""
     sys.stdout.write(msg)
     sys.stdout.flush()
 
@@ -74,13 +77,17 @@ def print_test_result(res: tuple[bool, Optional[str]]):
 
 
 def query_yes_no(question: str, default: str = "yes") -> bool:
-    """!
+    """
     Ask a yes/no question via input() and return their answer.
-    @param question The question that is presented to the user.
-    @param default The presumed answer if the user just hits <Enter>.
+
+    :param question: The question that is presented to the user.
+    :type question: str
+    :param default: The presumed answer if the user just hits <Enter>.
         It must be "yes" (the default), "no" or None (meaning
         an answer is required of the user).
-    @return True if the answer is "yes", False otherwise
+    :type default: str, optional
+    :return: True if the answer is "yes", False otherwise
+    :rtype: bool
     """
     valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
     if default is None:
@@ -99,7 +106,7 @@ def query_yes_no(question: str, default: str = "yes") -> bool:
             return valid[default]
         if choice in valid:
             return valid[choice]
-        print("Please respond with 'yes' or 'no' " "(or 'y' or 'n').")
+        print("Please respond with 'yes' or 'no' (or 'y' or 'n').")
 
 
 def prompt_options(options: list[tuple[str, T]], default: int = 1) -> T:
