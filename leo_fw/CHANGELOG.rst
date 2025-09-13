@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.0 (2025-09-13)
+------------------
 * Backport changes from Jazzy branch to Humble (`#37 <https://github.com/LeoRover/leo_robot-ros2/issues/37>`_)
   * Fix mypy and pylint errors (`#14 <https://github.com/LeoRover/leo_robot-ros2/issues/14>`_)
   * Add missing type annotations in `leo_fw` package nodes (`#18 <https://github.com/LeoRover/leo_robot-ros2/issues/18>`_)
