@@ -2,6 +2,11 @@
 Changelog for package leo_robot
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Backport changes from Jazzy branch to Humble (`#37 <https://github.com/LeoRover/leo_robot-ros2/issues/37>`_)
+* Contributors: Błażej Sowa
+
 1.5.0 (2024-11-18)
 ------------------
 

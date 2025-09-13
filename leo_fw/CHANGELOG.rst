@@ -2,6 +2,20 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Backport changes from Jazzy branch to Humble (`#37 <https://github.com/LeoRover/leo_robot-ros2/issues/37>`_)
+  * Fix mypy and pylint errors (`#14 <https://github.com/LeoRover/leo_robot-ros2/issues/14>`_)
+  * Add missing type annotations in `leo_fw` package nodes (`#18 <https://github.com/LeoRover/leo_robot-ros2/issues/18>`_)
+  * Add parameter handling based on rover's model (`#19 <https://github.com/LeoRover/leo_robot-ros2/issues/19>`_)
+  * Add `leo_filters` package (`#17 <https://github.com/LeoRover/leo_robot-ros2/issues/17>`_)
+  * Include leocore firmware version 2.0.0 (`#20 <https://github.com/LeoRover/leo_robot-ros2/issues/20>`_)
+  * Update `robot_frame` param (`#22 <https://github.com/LeoRover/leo_robot-ros2/issues/22>`_)
+  * Use target_link_libraries instead of ament_target_dependencies (`#24 <https://github.com/LeoRover/leo_robot-ros2/issues/24>`_)
+  * Fix node type errors (`#35 <https://github.com/LeoRover/leo_robot-ros2/issues/35>`_)
+  * Use sphinx format docstrings (`#36 <https://github.com/LeoRover/leo_robot-ros2/issues/36>`_)
+* Contributors: Błażej Sowa, Aleksander Szymański, Jan Hernas
+
 1.5.0 (2024-11-18)
 ------------------
 * Update firmware binaries (`#11 <https://github.com/LeoRover/leo_robot-ros2/issues/11>`_)

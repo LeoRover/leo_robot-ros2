@@ -2,6 +2,20 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Backport changes from Jazzy branch to Humble (`#37 <https://github.com/LeoRover/leo_robot-ros2/issues/37>`_)
+  * New camera implementation (`#16 <https://github.com/LeoRover/leo_robot-ros2/issues/16>`_)
+  * Add parameter handling based on rover's model (`#19 <https://github.com/LeoRover/leo_robot-ros2/issues/19>`_)
+  * Add `leo_filters` package (`#17 <https://github.com/LeoRover/leo_robot-ros2/issues/17>`_)
+  * Update `robot_frame` param (`#22 <https://github.com/LeoRover/leo_robot-ros2/issues/22>`_)
+  * Add publish_odom_tf argument to leo_bringup launch file (`#26 <https://github.com/LeoRover/leo_robot-ros2/issues/26>`_)
+  * Specify camera frame_id (`#27 <https://github.com/LeoRover/leo_robot-ros2/issues/27>`_)
+  * Use services instead of topics for reboot and shutdown commands (`#28 <https://github.com/LeoRover/leo_robot-ros2/issues/28>`_)
+  * Improve camera quality (`#33 <https://github.com/LeoRover/leo_robot-ros2/issues/33>`_)
+  * Complementary filter improvements (`#34 <https://github.com/LeoRover/leo_robot-ros2/issues/34>`_)
+* Contributors: Błażej Sowa, Aleksander Szymański, Jan Hernas
+
 1.5.0 (2024-11-18)
 ------------------
 * Add web_video_server to dependencies (`#13 <https://github.com/LeoRover/leo_robot-ros2/issues/13>`_)
