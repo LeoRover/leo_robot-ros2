@@ -14,15 +14,22 @@ CONFIG_VOLTAGE_RANGE_32V = 0b1  # set bus voltage range to 32V (default)
 CONFIG_GAIN_DIV_8_320MV = 0b11  # shunt prog. gain set to /8, 320 mV range
 CONFIG_ADCRES_12BIT_128S = 0b1111  # 12bit, 128 samples, 68.10ms
 CONFIG_SANDBVOLT_CONTINUOUS = 0x07  # shunt and bus voltage continuous
+CONFIG_REG_VALUE = (
+    (CONFIG_VOLTAGE_RANGE_32V << 13)
+    | (CONFIG_GAIN_DIV_8_320MV << 11)
+    | (CONFIG_ADCRES_12BIT_128S << 7)
+    | (CONFIG_ADCRES_12BIT_128S << 3)
+    | CONFIG_SANDBVOLT_CONTINUOUS
+)  # Value to write to config register
 
 # Define LSB values
 SHUNT_VOLTAGE_LSB = 0.00001  # 10uV per bit
 BUS_VOLTAGE_LSB = 0.004  # 4mV per bit
 
 # Calibration value calculation
+RSHUNT = 0.1  # (Resistor value in ohms)
 # VBUS_MAX = 32V             (Assumes 32V)
 # VSHUNT_MAX = 0.32          (Assumes Gain 8, 320mV)
-# RSHUNT = 0.1               (Resistor value in ohms)
 # MaxPossible_I = VSHUNT_MAX / RSHUNT
 # MaxPossible_I = 3.2 A
 # MaxExpected_I = 3 A
@@ -35,6 +42,8 @@ BUS_VOLTAGE_LSB = 0.004  # 4mV per bit
 CURRENT_LSB = 0.000095
 POWER_LSB = CURRENT_LSB * 20
 
+# Value to write to calibration register
+CALIBRATION_REG_VALUE = int(0.04096 / (CURRENT_LSB * RSHUNT))
 
 REG_CONFIG = 0x00
 REG_SHUNTVOLTAGE = 0x01
@@ -80,51 +89,52 @@ class ChargingMonitor(Node):
         return struct.unpack(">h", bytes(data))[0]
 
     def initialize_sensor(self):
+        # Connect to I2C bus
         self.bus.open(self.i2c_bus_nr)
 
-        config_reg_value = (
-            (CONFIG_VOLTAGE_RANGE_32V << 13)
-            | (CONFIG_GAIN_DIV_8_320MV << 11)
-            | (CONFIG_ADCRES_12BIT_128S << 7)
-            | (CONFIG_ADCRES_12BIT_128S << 3)
-            | CONFIG_SANDBVOLT_CONTINUOUS
+        # Write configuration to INA219
+        self._write_reg16(REG_CONFIG, CONFIG_REG_VALUE)
+
+        # Write calibration value to INA219
+        self._write_reg16(REG_CALIBRATION, CALIBRATION_REG_VALUE)
+
+        self.get_logger().info(
+            "Charging monitor sensor initialized, starting data publishing..."
         )
-
-        # Write configuration to INA219 (MSB first)
-        self._write_reg16(REG_CONFIG, config_reg_value)
-
-        # Compute calibration register value
-        calibration_value = int(0.04096 / (CURRENT_LSB * 0.1))
-
-        # Write calibration value to INA219 (MSB first)
-        self._write_reg16(REG_CALIBRATION, calibration_value)
 
         self.publish_timer = self.create_timer(
             1.0 / self.data_publish_rate, self.publish_data
         )
 
-        self.get_logger().info("Charging monitor initialized.")
-
     def publish_data(self):
         msg = ChargingMonitorData()
         msg.header.stamp = self.get_clock().now().to_msg()
 
-        # Read shunt voltage
-        shunt_voltage_raw = self._read_reg16_s(REG_SHUNTVOLTAGE)
-        msg.shunt_voltage = shunt_voltage_raw * SHUNT_VOLTAGE_LSB
+        try:
+            # Read shunt voltage
+            shunt_voltage_raw = self._read_reg16_s(REG_SHUNTVOLTAGE)
+            msg.shunt_voltage = shunt_voltage_raw * SHUNT_VOLTAGE_LSB
 
-        # Read bus voltage
-        bus_voltage_reg = self._read_reg16_u(REG_BUSVOLTAGE)
-        # Bus voltage register uses bits 15..3; shift right by 3 before scaling
-        msg.bus_voltage = (bus_voltage_reg >> 3) * BUS_VOLTAGE_LSB
+            # Read bus voltage
+            bus_voltage_reg = self._read_reg16_u(REG_BUSVOLTAGE)
+            # Bus voltage register uses bits 15..3; shift right by 3 before scaling
+            msg.bus_voltage = (bus_voltage_reg >> 3) * BUS_VOLTAGE_LSB
 
-        # Read current
-        current_raw = self._read_reg16_s(REG_CURRENT)
-        msg.current = current_raw * CURRENT_LSB
+            # Read current
+            current_raw = self._read_reg16_s(REG_CURRENT)
+            msg.current = current_raw * CURRENT_LSB
 
-        # Read power
-        power_raw = self._read_reg16_u(REG_POWER)
-        msg.power = power_raw * POWER_LSB
+            # Read power
+            power_raw = self._read_reg16_u(REG_POWER)
+            msg.power = power_raw * POWER_LSB
+        except OSError as e:
+            self.get_logger().error(
+                f"I2C communication error while reading charging monitor data: {e}"
+            )
+            return
+        except Exception as e:
+            f"Unexpected error while reading charging monitor data: {e}"
+            return
 
         self.publisher.publish(msg)
 
@@ -139,6 +149,7 @@ if __name__ == "__main__":
         charging_monitor.get_logger().error(
             f"Failed to initialize Charging monitor: {e}"
         )
+        charging_monitor.bus.close()
         rclpy.shutdown()
         exit(1)
 
