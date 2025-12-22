@@ -25,6 +25,7 @@
   <exec_depend>image_proc</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-smbus2</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rosapi</exec_depend>
   <exec_depend>rosbridge_server</exec_depend>
