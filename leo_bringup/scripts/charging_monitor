@@ -133,7 +133,9 @@ class ChargingMonitor(Node):
             )
             return
         except Exception as e:
-            f"Unexpected error while reading charging monitor data: {e}"
+            self.get_logger().error(
+                f"Unexpected error while reading charging monitor data: {e}"
+            )
             return
 
         self.publisher.publish(msg)
