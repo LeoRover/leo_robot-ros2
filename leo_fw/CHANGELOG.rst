@@ -2,6 +2,12 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Use sphinx format docstrings (`#36 <https://github.com/LeoRover/leo_robot-ros2/issues/36>`_)
+* Add missing dependency on rcl_interfaces
+* Contributors: Błażej Sowa
+
 2.4.0 (2025-07-24)
 ------------------
 * Fix node type errors (`#35 <https://github.com/LeoRover/leo_robot-ros2/issues/35>`_)
