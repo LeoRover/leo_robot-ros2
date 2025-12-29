@@ -2,8 +2,8 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.5.0 (2025-12-29)
+------------------
 * feat: Add charging monitor node (`#38 <https://github.com/LeoRover/leo_robot-ros2/issues/38>`_)
 * Contributors: Błażej Sowa
 
