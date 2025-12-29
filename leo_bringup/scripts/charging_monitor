@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import contextlib
 import struct
 
 import smbus2
@@ -158,7 +157,9 @@ if __name__ == "__main__":
         rclpy.shutdown()
         exit(1)
 
-    with contextlib.suppress(KeyboardInterrupt):
+    try:
         rclpy.spin(charging_monitor)
-
-    charging_monitor.bus.close()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        charging_monitor.bus.close()
