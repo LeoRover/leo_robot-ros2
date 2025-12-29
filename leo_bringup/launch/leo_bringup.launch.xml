@@ -24,6 +24,10 @@
     default="true"
     description="Whether to publish odom -> base_footprint TF" />
 
+  <arg name="start_charging_monitor"
+    default="false"
+    description="Whether to start the charging monitor node" />
+
   <!-- This sets leo_hardware_version -->
   <include file="$(find-pkg-share leo_bringup)/launch/find_hardware_version.launch.py" />
 
@@ -125,5 +129,9 @@
 
   <node pkg="leo_bringup"
     exec="leo_system" />
+
+  <node if="$(var start_charging_monitor)"
+    pkg="leo_bringup"
+    exec="charging_monitor" />
 
 </launch>

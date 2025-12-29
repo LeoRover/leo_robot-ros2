@@ -25,6 +25,7 @@
   <exec_depend>image_proc</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-smbus2</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rosapi</exec_depend>
   <exec_depend>rosbridge_server</exec_depend>
@@ -36,6 +37,7 @@
   <exec_depend>leo_description</exec_depend>
   <exec_depend>leo_filters</exec_depend>
   <exec_depend>leo_fw</exec_depend>
+  <exec_depend>leo_msgs</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_cmake_black</test_depend>

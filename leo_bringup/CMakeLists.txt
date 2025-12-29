@@ -14,6 +14,7 @@ install(
 
 install(
   PROGRAMS
+    scripts/charging_monitor
     scripts/leo_system
   DESTINATION lib/${PROJECT_NAME}
 )
