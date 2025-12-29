@@ -71,6 +71,9 @@ class ChargingMonitor(Node):
             self.get_parameter("data_publish_rate").get_parameter_value().double_value
         )
 
+        if self.data_publish_rate <= 0:
+            raise ValueError("data_publish_rate must be positive")
+
         self.bus = smbus2.SMBus()
 
         self.publisher = self.create_publisher(ChargingMonitorData, "~/data", 10)
