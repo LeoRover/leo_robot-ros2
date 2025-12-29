@@ -160,3 +160,5 @@ if __name__ == "__main__":
 
     with contextlib.suppress(KeyboardInterrupt):
         rclpy.spin(charging_monitor)
+
+    charging_monitor.bus.close()
