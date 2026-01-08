@@ -38,11 +38,13 @@ RSHUNT = 0.1  # (Resistor value in ohms)
 # MinimumLSB = 0.000091              (91uA per bit)
 # We choose LSB between the min and max
 # We chose 95uA per bit
-CURRENT_LSB = 0.000095
-POWER_LSB = CURRENT_LSB * 20
+# Target LSB (~95uA/bit), then force calibration register's LSB to 0 (value must be even)
+CURRENT_LSB_TARGET = 0.000095
+CALIBRATION_REG_VALUE = int(0.04096 / (CURRENT_LSB_TARGET * RSHUNT)) & 0xFFFE
 
-# Value to write to calibration register
-CALIBRATION_REG_VALUE = int(0.04096 / (CURRENT_LSB * RSHUNT))
+# Recompute actual LSBs from the final calibration value
+CURRENT_LSB = 0.04096 / (CALIBRATION_REG_VALUE * RSHUNT)
+POWER_LSB = CURRENT_LSB * 20
 
 REG_CONFIG = 0x00
 REG_SHUNTVOLTAGE = 0x01
@@ -108,7 +110,34 @@ class ChargingMonitor(Node):
             1.0 / self.data_publish_rate, self.publish_data
         )
 
+    def ensure_sensor_ready(self) -> bool:
+        try:
+            config = self._read_reg16_u(REG_CONFIG)
+            calib = self._read_reg16_u(REG_CALIBRATION)
+        except OSError as e:
+            self.get_logger().warning(f"I2C not responding, will retry: {e}")
+            return False
+
+        needs_reinit = (config != CONFIG_REG_VALUE) or (calib != CALIBRATION_REG_VALUE)
+        if needs_reinit:
+            self.get_logger().warning(
+                "INA219 configuration mismatch detected (possible reset or corruption). "
+            )
+            try:
+                self._write_reg16(REG_CONFIG, CONFIG_REG_VALUE)
+                self._write_reg16(REG_CALIBRATION, CALIBRATION_REG_VALUE)
+            except OSError as e:
+                self.get_logger().error(
+                    f"I2C error while reapplying config/calibration: {e}"
+                )
+                return False
+
+        return True
+
     def publish_data(self):
+        if not self.ensure_sensor_ready():
+            return
+
         msg = ChargingMonitorData()
         msg.header.stamp = self.get_clock().now().to_msg()
 
