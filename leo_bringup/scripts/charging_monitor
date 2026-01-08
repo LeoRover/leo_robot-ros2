@@ -38,7 +38,7 @@ RSHUNT = 0.1  # (Resistor value in ohms)
 # MinimumLSB = 0.000091              (91uA per bit)
 # We choose LSB between the min and max
 # We chose 95uA per bit
-# Target LSB (~95uA/bit), then force calibration value even (LSB=0)
+# Target LSB (~95uA/bit), then force calibration register's LSB to 0 (value must be even)
 CURRENT_LSB_TARGET = 0.000095
 CALIBRATION_REG_VALUE = int(0.04096 / (CURRENT_LSB_TARGET * RSHUNT)) & 0xFFFE
 
@@ -120,12 +120,12 @@ class ChargingMonitor(Node):
 
         needs_reinit = (config != CONFIG_REG_VALUE) or (calib != CALIBRATION_REG_VALUE)
         if needs_reinit:
+            self.get_logger().warning(
+                "INA219 configuration mismatch detected (possible reset or corruption). "
+            )
             try:
                 self._write_reg16(REG_CONFIG, CONFIG_REG_VALUE)
                 self._write_reg16(REG_CALIBRATION, CALIBRATION_REG_VALUE)
-                self.get_logger().warning(
-                    "INA219 reset detected. Reapplied configuration and calibration."
-                )
             except OSError as e:
                 self.get_logger().error(
                     f"I2C error while reapplying config/calibration: {e}"
