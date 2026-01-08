@@ -38,11 +38,13 @@ RSHUNT = 0.1  # (Resistor value in ohms)
 # MinimumLSB = 0.000091              (91uA per bit)
 # We choose LSB between the min and max
 # We chose 95uA per bit
-CURRENT_LSB = 0.000095
-POWER_LSB = CURRENT_LSB * 20
+# Target LSB (~95uA/bit), then force calibration value even (LSB=0)
+CURRENT_LSB_TARGET = 0.000095
+CALIBRATION_REG_VALUE = int(0.04096 / (CURRENT_LSB_TARGET * RSHUNT)) & 0xFFFE
 
-# Value to write to calibration register
-CALIBRATION_REG_VALUE = int(0.04096 / (CURRENT_LSB * RSHUNT))
+# Recompute actual LSBs from the final calibration value
+CURRENT_LSB = 0.04096 / (CALIBRATION_REG_VALUE * RSHUNT)
+POWER_LSB = CURRENT_LSB * 20
 
 REG_CONFIG = 0x00
 REG_SHUNTVOLTAGE = 0x01
