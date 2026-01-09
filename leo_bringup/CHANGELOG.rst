@@ -2,6 +2,11 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix: Detect charging monitor sensor reset and reapply calibration (`#39 <https://github.com/LeoRover/leo_robot-ros2/issues/39>`_)
+* Contributors: Błażej Sowa
+
 2.5.0 (2025-12-29)
 ------------------
 * feat: Add charging monitor node (`#38 <https://github.com/LeoRover/leo_robot-ros2/issues/38>`_)
