@@ -2,6 +2,12 @@
 Changelog for package leo_filters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.5.1 (2026-01-09)
+------------------
+
+2.5.0 (2025-12-29)
+------------------
+
 2.4.0 (2025-07-24)
 ------------------
 * Complementary filter improvements (`#34 <https://github.com/LeoRover/leo_robot-ros2/issues/34>`_)
