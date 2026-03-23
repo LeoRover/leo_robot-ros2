@@ -93,7 +93,7 @@ class ParameterBridge(Node):
         self.firmware_subscriber = self.create_subscription(
             Empty,
             "firmware/param_trigger",
-            self.param_trigger_callback,
+            self.param_trigger_callback,  # type: ignore[arg-type]
             QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=1,
@@ -227,7 +227,7 @@ class ParameterBridge(Node):
         cancel_timer = self.create_timer(
             5.0,
             lambda: future.set_result(None),
-            callback_group = MutuallyExclusiveCallbackGroup(),
+            callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
         await future
@@ -266,7 +266,7 @@ class ParameterBridge(Node):
         cancel_timer = self.create_timer(
             5.0,
             lambda: boot_future.set_result(None),
-            callback_group = MutuallyExclusiveCallbackGroup(),
+            callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
         await boot_future
