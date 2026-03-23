@@ -104,7 +104,7 @@ class ParameterBridge(Node):
 
         self.params_retry_timer: Timer = self.create_timer(
             2.0,
-            self.try_send_params,
+            self.try_send_params, # type: ignore[arg-type]
         )
 
     async def try_send_params(self) -> None:
