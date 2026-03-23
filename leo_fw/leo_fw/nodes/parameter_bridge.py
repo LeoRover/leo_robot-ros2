@@ -182,7 +182,7 @@ class ParameterBridge(Node):
         self.get_logger().info("Request for firmware parameters.")
         success, _ = await self.send_params()
         if success:
-            await self.trigger_boot()        
+            await self.trigger_boot()
 
     async def upload_params_callback(
         self, _request: Trigger.Request, response: Trigger.Response
