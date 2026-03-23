@@ -87,7 +87,7 @@ class ParameterBridge(Node):
         self.param_bridge_srv = self.create_service(
             Trigger,
             "upload_params",
-            self.upload_params_callback,
+            self.upload_params_callback,  # type: ignore[arg-type]
         )
 
         self.firmware_subscriber = self.create_subscription(
