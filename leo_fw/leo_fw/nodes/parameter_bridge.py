@@ -102,15 +102,17 @@ class ParameterBridge(Node):
             ),
         )
 
-        self.params_retry_timer: Timer = self.create_timer(
+        self.params_retry_timer: Timer | None = self.create_timer(
             2.0,
             self.try_send_params,  # type: ignore[arg-type]
         )
 
     async def try_send_params(self) -> None:
         success, _ = await self.send_params()
-        if success and self.params_retry_timer is not None:
-            self.params_retry_timer.destroy()
+        timer = self.params_retry_timer
+        if success and timer is not None:
+            timer.destroy()
+            self.params_retry_timer = None
             self.get_logger().info(
                 "Firmware parameters uploaded successfully. Retry timer stopped."
             )
@@ -226,7 +228,7 @@ class ParameterBridge(Node):
 
         cancel_timer = self.create_timer(
             5.0,
-            lambda: future.set_result(None),
+            lambda: None if future.done() else future.set_result(None),
             callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
@@ -259,13 +261,14 @@ class ParameterBridge(Node):
 
         if not self.firmware_boot_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().error("Firmware boot service not active!")
+            return False
 
         boot_request = Trigger.Request()
         boot_future = self.firmware_boot_service_client.call_async(boot_request)
 
         cancel_timer = self.create_timer(
             5.0,
-            lambda: boot_future.set_result(None),
+            lambda: None if boot_future.done() else boot_future.set_result(None),
             callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
@@ -275,7 +278,12 @@ class ParameterBridge(Node):
 
         if boot_future.result():
             self.get_logger().info("Firmware boot triggered successfully.")
-            self.params_retry_timer.destroy()
+            if (
+                hasattr(self, "params_retry_timer")
+                and self.params_retry_timer is not None
+            ):
+                if isinstance(self.params_retry_timer, Timer):
+                    self.params_retry_timer.destroy()
             return True
 
         self.get_logger().error("Didn't get response from firmware boot service!")
