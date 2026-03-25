@@ -206,6 +206,7 @@ class ParameterBridge(Node):
         else:
             response.message = "Failed to set firmware parameters."
             response.success = False
+            self.get_logger().error(response.message)
 
         return response
 
