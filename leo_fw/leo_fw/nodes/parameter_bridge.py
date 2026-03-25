@@ -109,9 +109,8 @@ class ParameterBridge(Node):
 
     async def try_send_params(self) -> None:
         success, _ = await self.send_params()
-        timer = self.params_retry_timer
-        if success and timer is not None:
-            timer.destroy()
+        if success and self.params_retry_timer is not None:
+            self.params_retry_timer.destroy()
             self.params_retry_timer = None
             self.get_logger().info(
                 "Firmware parameters uploaded successfully. Retry timer stopped."
@@ -279,12 +278,9 @@ class ParameterBridge(Node):
 
         if boot_future.result():
             self.get_logger().info("Firmware boot triggered successfully.")
-            if (
-                hasattr(self, "params_retry_timer")
-                and self.params_retry_timer is not None
-            ):
-                if isinstance(self.params_retry_timer, Timer):
-                    self.params_retry_timer.destroy()
+            if self.params_retry_timer is not None:
+                self.params_retry_timer.destroy()
+                self.params_retry_timer = None
             return True
 
         self.get_logger().error("Didn't get response from firmware boot service!")
