@@ -210,12 +210,11 @@ class ParameterBridge(Node):
         return response
 
     async def send_params(self) -> tuple[bool, int]:
-        self.get_logger().info("Trying to set parameters for firmware node...")
+        if not self.firmware_parameter_service_client.service_is_ready():
+            self.get_logger().info("Firmware parameter service not ready.")
+            return (False, 0)
 
-        not_set_params_num = 0
-        if not self.firmware_parameter_service_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().error("Firmware parameter service not active!")
-            return (False, not_set_params_num)
+        self.get_logger().info("Trying to set parameters for firmware node...")
 
         param_request = SetParameters.Request()
         param_request.parameters = self.parse_firmware_parameters()
@@ -236,6 +235,7 @@ class ParameterBridge(Node):
 
         cancel_timer.destroy()
 
+        not_set_params_num = 0
         set_params_response: SetParameters.Response | None = future.result()
         if set_params_response is not None:
             result: SetParametersResult
