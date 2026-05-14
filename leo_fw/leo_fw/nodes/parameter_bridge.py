@@ -24,7 +24,11 @@ import yaml  # type: ignore
 
 from ament_index_python import get_package_share_directory
 
-from rcl_interfaces.msg import Parameter as ParameterMsg, SetParametersResult
+from rcl_interfaces.msg import (
+    Parameter as ParameterMsg,
+    SetParametersResult,
+    ParameterDescriptor,
+)
 from rcl_interfaces.srv import SetParameters
 
 import rclpy
@@ -63,10 +67,15 @@ class ParameterBridge(Node):
         self.declare_parameter(
             "default_params_file_path",
             path.join(leo_fw_share, "data", "default_firmware_params.yaml"),
+            ParameterDescriptor(read_only=True),
         )
-        self.declare_parameter("override_params_file_path", "")
+        self.declare_parameter(
+            "override_params_file_path", "", ParameterDescriptor(read_only=True)
+        )
 
-        self.declare_parameter("leo_hardware_version", 2)
+        self.declare_parameter(
+            "leo_hardware_version", 2, ParameterDescriptor(read_only=True)
+        )
 
         self.load_default_params()
         self.load_override_params()
