@@ -66,7 +66,7 @@ class ParameterBridge(Node):
         )
         self.declare_parameter("override_params_file_path", "")
 
-        self.declare_parameter("leo_hardware_version", 109)
+        self.declare_parameter("leo_hardware_version", 2)
 
         self.load_default_params()
         self.load_override_params()
