@@ -156,7 +156,7 @@ class ParameterBridge(Node):
         ) -> None:
             for key, value in default_dict.items():
                 if isinstance(value, dict):
-                    new_name_prefix = param_name_prefix + key + "/"
+                    new_name_prefix = param_name_prefix + key + "."
                     parse_parameters_recursive(
                         parameters,
                         new_name_prefix,
