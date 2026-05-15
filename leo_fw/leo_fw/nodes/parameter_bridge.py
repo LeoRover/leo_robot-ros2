@@ -183,6 +183,7 @@ class ParameterBridge(Node):
                 )
 
         self.new_params.extend(params)
+        assert self.executor is not None
         self.executor.create_task(self.send_new_params)
 
     async def param_trigger_callback(self, _msg: Empty) -> None:
