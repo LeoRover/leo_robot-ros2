@@ -69,16 +69,16 @@ class ParameterBridge(Node):
             path.join(leo_fw_share, "data", "default_firmware_params.yaml"),
             ParameterDescriptor(read_only=True),
         )
-        self.declare_parameter(
-            "override_params_file_path", "", ParameterDescriptor(read_only=True)
-        )
 
         self.declare_parameter(
             "leo_hardware_version", 2, ParameterDescriptor(read_only=True)
         )
 
         self.load_default_params()
-        self.load_override_params()
+
+        self.params_dict = self.parse_default_params()
+        self.new_params: list[Parameter] = []
+        self.declare_firmware_parameters()
 
         cb_group = MutuallyExclusiveCallbackGroup()
         self.firmware_parameter_service_client: Client = self.create_client(
@@ -95,7 +95,7 @@ class ParameterBridge(Node):
 
         self.param_bridge_srv = self.create_service(
             Trigger,
-            "upload_params",
+            "~/upload_params",
             self.upload_params_callback,  # type: ignore[arg-type]
         )
 
@@ -116,8 +116,10 @@ class ParameterBridge(Node):
             self.try_send_params,  # type: ignore[arg-type]
         )
 
+        self.add_post_set_parameters_callback(self.post_set_parameters_callback)
+
     async def try_send_params(self) -> None:
-        success, _ = await self.send_params()
+        success, _ = await self.send_all_params()
         if success and self.params_retry_timer is not None:
             self.params_retry_timer.destroy()
             self.params_retry_timer = None
@@ -135,33 +137,11 @@ class ParameterBridge(Node):
         with open(default_params_file, "r", encoding="utf-8") as file:
             self.default_params: dict = yaml.safe_load(file)
 
-    def load_override_params(self) -> None:
-        override_params_file: str = (
-            self.get_parameter("override_params_file_path")
-            .get_parameter_value()
-            .string_value
-        )
-
-        self.override_params = {}
-
-        if override_params_file != "":
-            try:
-                with open(override_params_file, "r", encoding="utf-8") as file:
-                    override_yaml = yaml.safe_load(file)
-                    if isinstance(override_yaml, dict):
-                        self.override_params = override_yaml
-            except (FileNotFoundError, PermissionError, yaml.YAMLError) as exc:
-                self.get_logger().error("Failed to load parameter overrides!")
-                self.get_logger().error(str(exc))
-        else:
-            self.get_logger().warning("Path to file with override parameters is empty.")
-
-    def parse_firmware_parameters(self) -> list[ParameterMsg]:
+    def parse_default_params(self) -> dict[str, Parameter]:
         def parse_parameters_recursive(
-            parameters: list[ParameterMsg],
+            parameters: dict[str, Parameter],
             param_name_prefix: str,
             default_dict: dict,
-            override_dict: dict,
         ) -> None:
             for key, value in default_dict.items():
                 if isinstance(value, dict):
@@ -170,27 +150,42 @@ class ParameterBridge(Node):
                         parameters,
                         new_name_prefix,
                         value,
-                        override_dict.get(key, {}),
                     )
                     continue
-
-                if key in override_dict:
-                    value = override_dict[key]
 
                 new_param = rclpy.Parameter(
                     param_name_prefix + key, self.type_dict[type(value)], value
                 )
-                parameters.append(new_param.to_parameter_msg())
+                parameters[new_param.name] = new_param
 
-        parameters: list[ParameterMsg] = []
+        parameters: dict[str, Parameter] = {}
         parse_parameters_recursive(
-            parameters, "", self.default_params, self.override_params
+            parameters, "", self.default_params,
         )
         return parameters
 
+    def declare_firmware_parameters(self) -> None:
+        for param in self.params_dict.values():
+            self.declare_parameter(param.name, param.value)
+        
+        for param_name in self.params_dict.keys():
+            param = self.get_parameter(param_name)
+            self.params_dict.update({param_name: param})
+
+    def post_set_parameters_callback(self, params: list[Parameter]) -> None:
+        for param in params:
+            if param.name in self.params_dict:
+                self.params_dict[param.name] = param
+                self.get_logger().info(
+                    f"Parameter '{param.name}' updated to: {param.value}"
+                )
+
+        self.new_params.extend(params)
+        self.executor.create_task(self.send_new_params)
+
     async def param_trigger_callback(self, _msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
-        success, _ = await self.send_params()
+        success, _ = await self.send_all_params()
         if success:
             await self.trigger_boot()
 
@@ -201,9 +196,7 @@ class ParameterBridge(Node):
             "Serving user request for setting firmware parameters..."
         )
 
-        self.load_override_params()
-
-        result, num = await self.send_params()
+        result, num = await self.send_all_params()
         if result:
             response.message = "Successfully set firmware parameters."
             if num > 0:
@@ -218,19 +211,44 @@ class ParameterBridge(Node):
 
         return response
 
-    async def send_params(self) -> tuple[bool, int]:
+    async def send_all_params(self) -> tuple[bool, int]:
         if not self.firmware_parameter_service_client.service_is_ready():
             self.get_logger().info("Firmware parameter service not ready.")
             return (False, 0)
 
         self.get_logger().info("Trying to set parameters for firmware node...")
 
-        param_request = SetParameters.Request()
-        param_request.parameters = self.parse_firmware_parameters()
+        all_params = [param.to_parameter_msg() for param in self.params_dict.values()]
+        all_params.append(self.get_parameter("leo_hardware_version").to_parameter_msg())
 
-        param_request.parameters.append(
-            self.get_parameter("leo_hardware_version").to_parameter_msg()
-        )
+        not_set_params_num = 0
+        for param in all_params:
+            try:
+                if not await self.send_param(Parameter.from_parameter_msg(param)):
+                    not_set_params_num += 1
+            except RuntimeError as e:
+                self.get_logger().error(str(e))
+                return (False, not_set_params_num)
+
+        self.get_logger().info("Successfully set parameters for firmware node.")
+        return (True, not_set_params_num)
+
+    async def send_new_params(self) -> None:
+        for param in self.new_params:
+            try:
+                await self.send_param(param)
+            except RuntimeError as e:
+                self.get_logger().error(str(e))
+                return
+        self.new_params = []
+
+    async def send_param(self, param: Parameter) -> bool:
+        if not self.firmware_parameter_service_client.service_is_ready():
+            self.get_logger().info("Firmware parameter service not ready.")
+            return False
+
+        param_request = SetParameters.Request()
+        param_request.parameters = [param.to_parameter_msg()]
 
         future = self.firmware_parameter_service_client.call_async(param_request)
 
@@ -244,26 +262,18 @@ class ParameterBridge(Node):
 
         cancel_timer.destroy()
 
-        not_set_params_num = 0
         set_params_response: SetParameters.Response | None = future.result()
         if set_params_response is not None:
-            result: SetParametersResult
-            param: ParameterMsg
-            for result, param in zip(
-                set_params_response.results, param_request.parameters
-            ):
-                if not result.successful:
-                    self.get_logger().warning(
-                        f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
-                    )
-                    not_set_params_num += 1
-
-            self.get_logger().info("Successfully set parameters for firmware node.")
-
-            return (True, not_set_params_num)
-
-        self.get_logger().error("Unable to set parameters for firmware node.")
-        return (False, not_set_params_num)
+            result: SetParametersResult = set_params_response.results[0]
+            if result.successful:
+                return True
+            else:
+                self.get_logger().warning(
+                    f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
+                )
+                return False
+        else:
+            raise RuntimeError("Didn't get response from firmware parameter service!")
 
     async def trigger_boot(self) -> bool:
         self.get_logger().info("Trying to trigger firmware boot.")
