@@ -15,7 +15,7 @@ class HeadingController(Node):
         super().__init__("heading_controller")
 
         self.declare_parameter("linear_hold_deadband", 0.05)
-        self.declare_parameter("kp", 10.0)
+        self.declare_parameter("kp", 15.0)
         self.declare_parameter("max_correction", 1.0)
         self.declare_parameter("yaw_deadband", 0.005)
         self.declare_parameter("angular_hold_deadband", 0.2)
