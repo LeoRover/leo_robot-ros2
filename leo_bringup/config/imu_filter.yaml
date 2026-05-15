@@ -1,4 +1,4 @@
-/**:
+/**/imu_filter:
   ros__parameters:
     gain_acc: 0.01
     bias_alpha: 0.01
