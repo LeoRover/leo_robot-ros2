@@ -160,14 +160,16 @@ class ParameterBridge(Node):
 
         parameters: dict[str, Parameter] = {}
         parse_parameters_recursive(
-            parameters, "", self.default_params,
+            parameters,
+            "",
+            self.default_params,
         )
         return parameters
 
     def declare_firmware_parameters(self) -> None:
         for param in self.params_dict.values():
             self.declare_parameter(param.name, param.value)
-        
+
         for param_name in self.params_dict.keys():
             param = self.get_parameter(param_name)
             self.params_dict.update({param_name: param})
