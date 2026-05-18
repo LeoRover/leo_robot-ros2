@@ -170,7 +170,7 @@ class ParameterBridge(Node):
         for param in self.params_dict.values():
             self.declare_parameter(param.name, param.value)
 
-        for param_name in self.params_dict.keys():
+        for param_name in self.params_dict:
             param = self.get_parameter(param_name)
             self.params_dict.update({param_name: param})
 
@@ -274,11 +274,10 @@ class ParameterBridge(Node):
             result: SetParametersResult = set_params_response.results[0]
             if result.successful:
                 return True
-            else:
-                self.get_logger().warning(
-                    f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
-                )
-                return False
+            self.get_logger().warning(
+                f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
+            )
+            return False
         else:
             raise RuntimeError("Didn't get response from firmware parameter service!")
 
