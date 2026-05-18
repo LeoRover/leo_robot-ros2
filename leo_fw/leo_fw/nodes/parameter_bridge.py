@@ -275,8 +275,8 @@ class ParameterBridge(Node):
                 f"Parameter '{param.name}' not set. Reason: '{result.reason}'"
             )
             return False
-        else:
-            raise RuntimeError("Didn't get response from firmware parameter service!")
+
+        raise RuntimeError("Didn't get response from firmware parameter service!")
 
     async def trigger_boot(self) -> bool:
         self.get_logger().info("Trying to trigger firmware boot.")
