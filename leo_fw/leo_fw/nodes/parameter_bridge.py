@@ -77,7 +77,6 @@ class ParameterBridge(Node):
         self.load_default_params()
 
         self.params_dict = self.parse_default_params()
-        self.new_params: list[Parameter] = []
         self.declare_firmware_parameters()
 
         cb_group = MutuallyExclusiveCallbackGroup()
@@ -186,9 +185,8 @@ class ParameterBridge(Node):
                 )
 
         if new_firmware_params:
-            self.new_params.extend(new_firmware_params)
             assert self.executor is not None
-            self.executor.create_task(self.send_new_params)
+            self.executor.create_task(self.send_new_params, new_firmware_params)
 
     async def param_trigger_callback(self, _msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
@@ -240,14 +238,13 @@ class ParameterBridge(Node):
         self.get_logger().info("Successfully set parameters for firmware node.")
         return (True, not_set_params_num)
 
-    async def send_new_params(self) -> None:
-        for param in self.new_params:
+    async def send_new_params(self, params: list[Parameter]) -> None:
+        for param in params:
             try:
                 await self.send_param(param)
             except RuntimeError as e:
                 self.get_logger().error(str(e))
                 return
-        self.new_params = []
 
     async def send_param(self, param: Parameter) -> bool:
         if not self.firmware_parameter_service_client.service_is_ready():
