@@ -51,6 +51,7 @@
   <!-- Set parameters for all nodes -->
   <set_parameters_from_file filename="$(find-pkg-share leo_bringup)/config/firmware_message_converter.yaml" />
   <set_parameters_from_file filename="$(find-pkg-share leo_bringup)/config/imu_filter.yaml" />
+  <set_parameters_from_file filename="$(find-pkg-share leo_bringup)/config/heading_controller.yaml" />
   <set_parameters_from_file filename="$(var camera_config_file)" />
   <set_parameters_from_file filename="$(var firmware_params_file)" />
   <set_parameters_from_file
@@ -134,8 +135,6 @@
     pkg="leo_bringup"
     exec="charging_monitor" />
 
-  <node pkg="leo_bringup" exec="heading_controller">
-    <param from="$(find-pkg-share leo_bringup)/config/heading_controller.yaml" />
-  </node>
+  <node pkg="leo_bringup" exec="heading_controller" />
 
 </launch>
