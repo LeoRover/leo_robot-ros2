@@ -1,4 +1,4 @@
-heading_controller:
+/**/heading_controller:
   ros__parameters:
     # Minimum absolute linear.x (m/s) required to enable heading hold. Below this, no correction is applied.
     linear_hold_deadband: 0.05
