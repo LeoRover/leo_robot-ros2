@@ -2,10 +2,10 @@ wheels:
   encoder_resolution: 878.4
   torque_constant: 1.17647
   pid:
-    p: 0.0
-    i: 0.005
-    d: 0.0
-  pwm_duty_limit: 100.0
+    kp: 2.64
+    ki: 42.24
+    kd: 0.11
+  max_voltage: 26.0
 
 mecanum_wheels: false
 
@@ -15,5 +15,9 @@ controller:
   wheel_base: 0.3052
   angular_velocity_multiplier: 1.76
   input_timeout: 500
+  linear_acceleration: 0.5
+  linear_deceleration: 2.0
+  angular_acceleration: 1.0
+  angular_deceleration: 4.0
 
 battery_min_voltage: 10.0
