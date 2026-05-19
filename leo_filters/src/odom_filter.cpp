@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include <atomic>
 #include <chrono>
 #include <cmath>
 
@@ -28,6 +29,7 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 using std::placeholders::_2;
+using std::placeholders::_3;
 
 namespace leo_filters
 {
@@ -44,14 +46,11 @@ OdomFilter::OdomFilter(rclcpp::NodeOptions options)
 
   broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-  client_cb_group_ =
-    create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   reset_odom_client_ = create_client<std_srvs::srv::Trigger>(
-    "firmware/reset_odometry", rclcpp::ServicesQoS(),
-    client_cb_group_);
+    "firmware/reset_odometry", rclcpp::ServicesQoS());
   reset_odom_srv_ = create_service<std_srvs::srv::Trigger>(
     "reset_odometry",
-    std::bind(&OdomFilter::reset_odom_callback, this, _1, _2));
+    std::bind(&OdomFilter::reset_odom_callback, this, _1, _2, _3));
 
   odom_merged_pub_ =
     create_publisher<nav_msgs::msg::Odometry>("merged_odom", 10);
@@ -138,33 +137,55 @@ void OdomFilter::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 }
 
 void OdomFilter::reset_odom_callback(
-  const std_srvs::srv::Trigger::Request::SharedPtr req,
-  std_srvs::srv::Trigger::Response::SharedPtr res)
+  std::shared_ptr<rclcpp::Service<std_srvs::srv::Trigger>> service_handle,
+  std::shared_ptr<rmw_request_id_t> request_header,
+  std::shared_ptr<std_srvs::srv::Trigger::Request> req)
 {
-  constexpr std::chrono::seconds callback_timeout = std::chrono::seconds(3);
+  (void)req;
   odom_merged_msg_.pose.pose.position.x = 0.0;
   odom_merged_msg_.pose.pose.position.y = 0.0;
   odom_merged_yaw_ = 0.0;
 
   auto reset_request = std::make_shared<std_srvs::srv::Trigger_Request>();
-  auto future = reset_odom_client_->async_send_request(reset_request);
-  auto result_status = future.wait_for(callback_timeout);
+  auto responded = std::make_shared<std::atomic_bool>(false);
 
-  if (result_status == std::future_status::ready) {
-    if (future.get()->success) {
-      res->success = true;
-      res->message = "Odometry reset successful.";
-    } else {
+  auto timeout_timer = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  auto weak_timer = std::weak_ptr<rclcpp::TimerBase::SharedPtr>(timeout_timer);
+
+  *timeout_timer = create_wall_timer(
+    3s,
+    [service_handle, request_header, responded, weak_timer]() {
+      if (auto t = weak_timer.lock()) {
+        (*t)->cancel();
+      }
+      if (responded->exchange(true)) {
+        return;
+      }
+      auto res = std::make_shared<std_srvs::srv::Trigger::Response>();
       res->success = false;
-      res->message = "Failed to reset odometry.";
-    }
-  } else if (result_status == std::future_status::timeout) {
-    res->success = false;
-    res->message = "Firmware service timeout.";
-  } else {
-    res->success = false;
-    res->message = "Firmware service call deffered.";
-  }
+      res->message = "Firmware service timeout.";
+      service_handle->send_response(*request_header, *res);
+    });
+
+  reset_odom_client_->async_send_request(
+    reset_request,
+    [service_handle, request_header, responded, timeout_timer](
+      rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
+      (*timeout_timer)->cancel();
+      if (responded->exchange(true)) {
+        return;
+      }
+      auto res = std::make_shared<std_srvs::srv::Trigger::Response>();
+      auto result = future.get();
+      if (result->success) {
+        res->success = true;
+        res->message = "Odometry reset successful.";
+      } else {
+        res->success = false;
+        res->message = "Failed to reset odometry.";
+      }
+      service_handle->send_response(*request_header, *res);
+    });
 }
 } // namespace leo_filters
 

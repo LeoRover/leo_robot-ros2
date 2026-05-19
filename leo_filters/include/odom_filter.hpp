@@ -43,8 +43,9 @@ private:
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
   void reset_odom_callback(
-    const std_srvs::srv::Trigger::Request::SharedPtr req,
-    std_srvs::srv::Trigger::Response::SharedPtr res);
+    std::shared_ptr<rclcpp::Service<std_srvs::srv::Trigger>> service_handle,
+    std::shared_ptr<rmw_request_id_t> request_header,
+    std::shared_ptr<std_srvs::srv::Trigger::Request> req);
 
   // ROS entities
   // Subscriptions
@@ -68,9 +69,6 @@ private:
 
   // Messages
   nav_msgs::msg::Odometry odom_merged_msg_;
-
-  // Callback Groups
-  rclcpp::CallbackGroup::SharedPtr client_cb_group_;
 
   // Time
   std::optional<rclcpp::Time> last_call_time_ {std::nullopt};

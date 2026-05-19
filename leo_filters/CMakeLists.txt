@@ -46,13 +46,14 @@ rclcpp_components_register_node(
   ${PROJECT_NAME}
   PLUGIN leo_filters::OdomFilter
   EXECUTABLE odom_filter
-  EXECUTOR MultiThreadedExecutor
+  EXECUTOR EventsExecutor
 )
 
 rclcpp_components_register_node(
   ${PROJECT_NAME}
   PLUGIN leo_filters::ImuFilter
   EXECUTABLE imu_filter
+  EXECUTOR EventsExecutor
 )
 
 install(
