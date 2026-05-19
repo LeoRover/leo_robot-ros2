@@ -25,6 +25,7 @@ target_link_libraries(leo_fw
 )
 rclcpp_components_register_node(leo_fw
   PLUGIN "leo_fw::FirmwareMessageConverter"
+  EXECUTOR "EventsExecutor"
   EXECUTABLE "firmware_message_converter"
 )
 
