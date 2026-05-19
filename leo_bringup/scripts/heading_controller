@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import math
+from dataclasses import dataclass, fields
 
 import rclpy
 from rclpy.experimental import EventsExecutor
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.qos import qos_profile_sensor_data
 
 from geometry_msgs.msg import Twist
@@ -12,31 +14,23 @@ from sensor_msgs.msg import Imu
 from tf_transformations import euler_from_quaternion
 
 
+@dataclass
+class HeadingParams:
+    linear_hold_deadband: float = 0.05
+    kp: float = 15.0
+    max_correction: float = 1.0
+    yaw_deadband: float = 0.005
+    angular_hold_deadband: float = 0.2
+
+
 class HeadingController(Node):
     def __init__(self) -> None:
         super().__init__("heading_controller")
 
-        self.declare_parameter("linear_hold_deadband", 0.05)
-        self.declare_parameter("kp", 15.0)
-        self.declare_parameter("max_correction", 1.0)
-        self.declare_parameter("yaw_deadband", 0.005)
-        self.declare_parameter("angular_hold_deadband", 0.2)
-
-        self.linear_hold_deadband = (
-            self.get_parameter("linear_hold_deadband").get_parameter_value().double_value
-        )
-        self.kp = self.get_parameter("kp").get_parameter_value().double_value
-        self.max_correction = (
-            self.get_parameter("max_correction").get_parameter_value().double_value
-        )
-        self.yaw_deadband = (
-            self.get_parameter("yaw_deadband").get_parameter_value().double_value
-        )
-        self.angular_hold_deadband = (
-            self.get_parameter("angular_hold_deadband")
-            .get_parameter_value()
-            .double_value
-        )
+        self.params = HeadingParams()
+        self._declare_parameters()
+        self._load_parameters()
+        self.add_post_set_parameters_callback(self.post_set_parameters_callback)
 
         self.current_yaw: float | None = None
         self.heading_ref: float | None = None
@@ -56,6 +50,19 @@ class HeadingController(Node):
         )
         self.cmd_pub = self.create_publisher(Twist, "cmd_vel", 1)
 
+    def _declare_parameters(self) -> None:
+        for field in fields(HeadingParams):
+            self.declare_parameter(field.name, getattr(self.params, field.name))
+
+    def _load_parameters(self) -> None:
+        for field in fields(HeadingParams):
+            setattr(self.params, field.name, float(self.get_parameter(field.name).value))
+
+    def post_set_parameters_callback(self, params: list[Parameter]) -> None:
+        for param in params:
+            if hasattr(self.params, param.name):
+                setattr(self.params, param.name, float(param.value))
+
     def imu_callback(self, msg: Imu) -> None:
         q = msg.orientation
         _, _, self.current_yaw = euler_from_quaternion((q.x, q.y, q.z, q.w))
@@ -74,8 +81,8 @@ class HeadingController(Node):
             return
 
         heading_hold_request = (
-            abs(msg.angular.z) <= self.angular_hold_deadband
-            and abs(msg.linear.x) >= self.linear_hold_deadband
+            abs(msg.angular.z) <= self.params.angular_hold_deadband
+            and abs(msg.linear.x) >= self.params.linear_hold_deadband
         )
 
         if heading_hold_request:
@@ -87,12 +94,12 @@ class HeadingController(Node):
                 math.sin(self.current_yaw - self.heading_ref),
                 math.cos(self.current_yaw - self.heading_ref),
             )
-            if abs(heading_error) < self.yaw_deadband:
+            if abs(heading_error) < self.params.yaw_deadband:
                 correction = 0.0
             else:
                 correction = max(
-                    -self.max_correction,
-                    min(-self.kp * heading_error, self.max_correction),
+                    -self.params.max_correction,
+                    min(-self.params.kp * heading_error, self.params.max_correction),
                 )
 
             filtered = Twist()
