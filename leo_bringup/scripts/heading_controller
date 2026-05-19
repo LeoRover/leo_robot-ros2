@@ -3,6 +3,7 @@
 import math
 
 import rclpy
+from rclpy.experimental import EventsExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
@@ -113,10 +114,12 @@ class HeadingController(Node):
 
 if __name__ == "__main__":
     rclpy.init()
+    executor = EventsExecutor()
     node = HeadingController()
+    executor.add_node(node)
 
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
