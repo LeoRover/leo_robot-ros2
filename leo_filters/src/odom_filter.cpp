@@ -150,10 +150,14 @@ void OdomFilter::reset_odom_callback(
   auto responded = std::make_shared<std::atomic_bool>(false);
 
   auto timeout_timer = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  auto weak_timer = std::weak_ptr<rclcpp::TimerBase::SharedPtr>(timeout_timer);
+
   *timeout_timer = create_wall_timer(
     3s,
-    [service_handle, request_header, responded, timeout_timer]() {
-      (*timeout_timer)->cancel();
+    [service_handle, request_header, responded, weak_timer]() {
+      if (auto t = weak_timer.lock()) {
+        (*t)->cancel();
+      }
       if (responded->exchange(true)) {
         return;
       }
