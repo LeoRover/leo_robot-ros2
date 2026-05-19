@@ -1,6 +1,6 @@
 # http://wiki.ros.org/leo_bringup
 
-/**:
+/**/firmware_message_converter:
   ros__parameters:
     robot_frame_id: base_footprint
     odom_frame_id: odom
