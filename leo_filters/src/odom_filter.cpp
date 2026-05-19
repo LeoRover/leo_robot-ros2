@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#include <atomic>
 #include <chrono>
 #include <cmath>
 
@@ -146,10 +147,30 @@ void OdomFilter::reset_odom_callback(
   odom_merged_yaw_ = 0.0;
 
   auto reset_request = std::make_shared<std_srvs::srv::Trigger_Request>();
+  auto responded = std::make_shared<std::atomic_bool>(false);
+
+  auto timeout_timer = std::make_shared<rclcpp::TimerBase::SharedPtr>();
+  *timeout_timer = create_wall_timer(
+    3s,
+    [service_handle, request_header, responded, timeout_timer]() {
+      (*timeout_timer)->cancel();
+      if (responded->exchange(true)) {
+        return;
+      }
+      auto res = std::make_shared<std_srvs::srv::Trigger::Response>();
+      res->success = false;
+      res->message = "Firmware service timeout.";
+      service_handle->send_response(*request_header, *res);
+    });
+
   reset_odom_client_->async_send_request(
     reset_request,
-    [service_handle, request_header, logger = get_logger()](
+    [service_handle, request_header, responded, timeout_timer](
       rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
+      (*timeout_timer)->cancel();
+      if (responded->exchange(true)) {
+        return;
+      }
       auto res = std::make_shared<std_srvs::srv::Trigger::Response>();
       auto result = future.get();
       if (result->success) {
