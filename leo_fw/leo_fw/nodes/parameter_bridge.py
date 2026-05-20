@@ -115,7 +115,7 @@ class ParameterBridge(Node):
             self.try_send_params,  # type: ignore[arg-type]
         )
 
-        self.add_post_set_parameters_callback(self.post_set_parameters_callback)
+        self.add_on_set_parameters_callback(self.on_set_parameters_callback)
 
     async def try_send_params(self) -> None:
         success, _ = await self.send_all_params()
@@ -173,7 +173,9 @@ class ParameterBridge(Node):
             param = self.get_parameter(param_name)
             self.params_dict.update({param_name: param})
 
-    def post_set_parameters_callback(self, params: list[Parameter]) -> None:
+    def on_set_parameters_callback(
+        self, params: list[Parameter]
+    ) -> SetParametersResult:
         new_firmware_params: list[Parameter] = []
 
         for param in params:
@@ -187,6 +189,8 @@ class ParameterBridge(Node):
         if new_firmware_params:
             assert self.executor is not None
             self.executor.create_task(self.send_new_params, new_firmware_params)
+
+        return SetParametersResult(successful=True)
 
     async def param_trigger_callback(self, _msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
