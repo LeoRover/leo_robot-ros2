@@ -1,4 +1,4 @@
-# Copyright 2023 Fictionlab sp. z o.o.
+# Copyright 2023-2026 Fictionlab sp. z o.o.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,9 +29,9 @@ from rcl_interfaces.srv import SetParameters
 
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.timer import Timer
 from rclpy.qos import (
     QoSDurabilityPolicy,
     QoSHistoryPolicy,
@@ -55,9 +55,8 @@ class ParameterBridge(Node):
         float: Parameter.Type.DOUBLE,
     }
 
-    def __init__(self, executor: MultiThreadedExecutor) -> None:
+    def __init__(self) -> None:
         super().__init__("firmware_parameter_bridge")
-        self.executor = executor
 
         leo_fw_share = get_package_share_directory("leo_fw")
 
@@ -88,13 +87,13 @@ class ParameterBridge(Node):
         self.param_bridge_srv = self.create_service(
             Trigger,
             "upload_params",
-            self.upload_params_callback,
+            self.upload_params_callback,  # type: ignore[arg-type]
         )
 
         self.firmware_subscriber = self.create_subscription(
             Empty,
             "firmware/param_trigger",
-            self.param_trigger_callback,
+            self.param_trigger_callback,  # type: ignore[arg-type]
             QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=1,
@@ -103,7 +102,19 @@ class ParameterBridge(Node):
             ),
         )
 
-        self.send_params()
+        self.params_retry_timer: Timer | None = self.create_timer(
+            2.0,
+            self.try_send_params,  # type: ignore[arg-type]
+        )
+
+    async def try_send_params(self) -> None:
+        success, _ = await self.send_params()
+        if success and self.params_retry_timer is not None:
+            self.params_retry_timer.destroy()
+            self.params_retry_timer = None
+            self.get_logger().info(
+                "Firmware parameters uploaded successfully. Retry timer stopped."
+            )
 
     def load_default_params(self) -> None:
         default_params_file: str = (
@@ -168,13 +179,13 @@ class ParameterBridge(Node):
         )
         return parameters
 
-    def param_trigger_callback(self, _msg: Empty) -> None:
+    async def param_trigger_callback(self, _msg: Empty) -> None:
         self.get_logger().info("Request for firmware parameters.")
-        success, _ = self.send_params()
+        success, _ = await self.send_params()
         if success:
-            self.trigger_boot()
+            await self.trigger_boot()
 
-    def upload_params_callback(
+    async def upload_params_callback(
         self, _request: Trigger.Request, response: Trigger.Response
     ) -> Trigger.Response:
         self.get_logger().info(
@@ -183,7 +194,7 @@ class ParameterBridge(Node):
 
         self.load_override_params()
 
-        result, num = self.send_params()
+        result, num = await self.send_params()
         if result:
             response.message = "Successfully set firmware parameters."
             if num > 0:
@@ -194,16 +205,16 @@ class ParameterBridge(Node):
         else:
             response.message = "Failed to set firmware parameters."
             response.success = False
+            self.get_logger().error(response.message)
 
         return response
 
-    def send_params(self) -> tuple[bool, int]:
-        self.get_logger().info("Trying to set parameters for firmware node...")
+    async def send_params(self) -> tuple[bool, int]:
+        if not self.firmware_parameter_service_client.service_is_ready():
+            self.get_logger().info("Firmware parameter service not ready.")
+            return (False, 0)
 
-        not_set_params_num = 0
-        if not self.firmware_parameter_service_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().error("Firmware parameter service not active!")
-            return (False, not_set_params_num)
+        self.get_logger().info("Trying to set parameters for firmware node...")
 
         param_request = SetParameters.Request()
         param_request.parameters = self.parse_firmware_parameters()
@@ -214,9 +225,17 @@ class ParameterBridge(Node):
 
         future = self.firmware_parameter_service_client.call_async(param_request)
 
-        assert self.executor is not None
-        self.executor.spin_until_future_complete(future, 5.0)
+        cancel_timer = self.create_timer(
+            5.0,
+            lambda: None if future.done() else future.set_result(None),
+            callback_group=MutuallyExclusiveCallbackGroup(),
+        )
 
+        await future
+
+        cancel_timer.destroy()
+
+        not_set_params_num = 0
         set_params_response: SetParameters.Response | None = future.result()
         if set_params_response is not None:
             result: SetParametersResult
@@ -237,20 +256,31 @@ class ParameterBridge(Node):
         self.get_logger().error("Unable to set parameters for firmware node.")
         return (False, not_set_params_num)
 
-    def trigger_boot(self) -> bool:
+    async def trigger_boot(self) -> bool:
         self.get_logger().info("Trying to trigger firmware boot.")
 
         if not self.firmware_boot_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().error("Firmware boot service not active!")
+            return False
 
         boot_request = Trigger.Request()
         boot_future = self.firmware_boot_service_client.call_async(boot_request)
 
-        assert self.executor is not None
-        self.executor.spin_until_future_complete(boot_future, 5.0)
+        cancel_timer = self.create_timer(
+            5.0,
+            lambda: None if boot_future.done() else boot_future.set_result(None),
+            callback_group=MutuallyExclusiveCallbackGroup(),
+        )
+
+        await boot_future
+
+        cancel_timer.destroy()
 
         if boot_future.result():
             self.get_logger().info("Firmware boot triggered successfully.")
+            if self.params_retry_timer is not None:
+                self.params_retry_timer.destroy()
+                self.params_retry_timer = None
             return True
 
         self.get_logger().error("Didn't get response from firmware boot service!")
