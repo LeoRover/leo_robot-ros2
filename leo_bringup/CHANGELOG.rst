@@ -2,8 +2,8 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-05-21)
+------------------
 * feat: Add heading controller (`#42 <https://github.com/LeoRover/leo_robot-ros2/issues/42>`_)
 * feat: New firmware parameter bridging and node parameter override mechanism (`#43 <https://github.com/LeoRover/leo_robot-ros2/issues/43>`_)
 * Contributors: Błażej Sowa, Jan Hernas

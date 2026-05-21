@@ -2,8 +2,8 @@
 Changelog for package leo_filters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-05-21)
+------------------
 * feat: Use EventsExecutor to reduce CPU consumption (`#44 <https://github.com/LeoRover/leo_robot-ros2/issues/44>`_)
 * Contributors: Błażej Sowa
 

@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-05-21)
+------------------
 * feat: Use EventsExecutor to reduce CPU consumption (`#44 <https://github.com/LeoRover/leo_robot-ros2/issues/44>`_)
 * feat: New firmware parameter bridging and node parameter override mechanism (`#43 <https://github.com/LeoRover/leo_robot-ros2/issues/43>`_)
 * fix: Ensure firmware parameters are always updated (`#41 <https://github.com/LeoRover/leo_robot-ros2/issues/41>`_)
