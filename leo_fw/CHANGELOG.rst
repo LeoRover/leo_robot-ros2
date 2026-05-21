@@ -2,6 +2,11 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* feat: Update leocore firmware to version 2.1.0 (`#48 <https://github.com/LeoRover/leo_robot-ros2/issues/48>`_)
+* Contributors: Błażej Sowa
+
 2.6.0 (2026-05-21)
 ------------------
 * feat: Use EventsExecutor to reduce CPU consumption (`#44 <https://github.com/LeoRover/leo_robot-ros2/issues/44>`_)
