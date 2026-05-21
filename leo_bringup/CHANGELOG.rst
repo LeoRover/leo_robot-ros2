@@ -2,6 +2,12 @@
 Changelog for package leo_bringup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* feat: Add heading controller (`#42 <https://github.com/LeoRover/leo_robot-ros2/issues/42>`_)
+* feat: New firmware parameter bridging and node parameter override mechanism (`#43 <https://github.com/LeoRover/leo_robot-ros2/issues/43>`_)
+* Contributors: Błażej Sowa, Jan Hernas
+
 2.5.1 (2026-01-09)
 ------------------
 * fix: Detect charging monitor sensor reset and reapply calibration (`#39 <https://github.com/LeoRover/leo_robot-ros2/issues/39>`_)
