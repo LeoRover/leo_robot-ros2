@@ -1,0 +1,12 @@
+/**/heading_controller:
+  ros__parameters:
+    # Minimum absolute linear.x (m/s) required to enable heading hold. Below this, no correction is applied.
+    linear_hold_deadband: 0.05
+    # Proportional gain used to convert heading error (rad) into angular.z correction (rad/s).
+    kp: 15.0
+    # Absolute limit for angular.z correction (rad/s) to avoid excessive steering.
+    max_correction: 1.0
+    # Heading error tolerance (rad), errors within this range produce zero correction.
+    yaw_deadband: 0.005
+    # Maximum absolute angular.z command (rad/s) still treated as heading-hold mode. Above this, no correction is applied.
+    angular_hold_deadband: 0.2
