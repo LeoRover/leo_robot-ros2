@@ -2,8 +2,8 @@
 Changelog for package leo_fw
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.1 (2026-05-21)
+------------------
 * feat: Update leocore firmware to version 2.1.0 (`#48 <https://github.com/LeoRover/leo_robot-ros2/issues/48>`_)
 * Contributors: Błażej Sowa
 
