@@ -101,6 +101,7 @@ void HeadingController::cmd_callback(geometry_msgs::msg::Twist::SharedPtr msg)
     heading_ref_ = *current_yaw_;
   }
 
+  // Normalized heading error to [-pi, pi]
   const double heading_error = std::atan2(
     std::sin(*current_yaw_ - *heading_ref_),
     std::cos(*current_yaw_ - *heading_ref_));
@@ -113,6 +114,7 @@ void HeadingController::cmd_callback(geometry_msgs::msg::Twist::SharedPtr msg)
       params_.max_correction);
   }
 
+  // Update heading reference for next iteration to prevent drift when turning
   if (prev_raw_angular_z_) {
     *heading_ref_ += *prev_raw_angular_z_ * dt;
   }
