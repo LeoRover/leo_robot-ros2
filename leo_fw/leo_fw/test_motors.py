@@ -230,9 +230,10 @@ class MotorTester:
 
 def test_motors(
     mode: MotorTestMode = MotorTestMode.ALL,
+    ros_args: Optional[list[str]] = None,
 ) -> None:
     write_flush("--> Initializing ROS node.. ")
-    rclpy.init(args=None)
+    rclpy.init(args=ros_args)
     node = Node("leo_motor_tester")
     spin_for(node, NODE_DISCOVERY_TIME)
     print_ok("DONE")
