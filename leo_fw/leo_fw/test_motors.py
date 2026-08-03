@@ -110,6 +110,19 @@ class MotorTester:
         self.wheel_data = data
         self.is_new_wheel_data = True
 
+    def stop_motors(self) -> None:
+        self.cmd_velfl_pub.publish(Float32(data=0.0))
+        self.cmd_velfr_pub.publish(Float32(data=0.0))
+        self.cmd_velrl_pub.publish(Float32(data=0.0))
+        self.cmd_velrr_pub.publish(Float32(data=0.0))
+
+        self.cmd_pwmfl_pub.publish(Float32(data=0.0))
+        self.cmd_pwmfr_pub.publish(Float32(data=0.0))
+        self.cmd_pwmrl_pub.publish(Float32(data=0.0))
+        self.cmd_pwmrr_pub.publish(Float32(data=0.0))
+
+        rclpy.spin_until_future_complete(self.node, Future(), None, 0.2)
+
     def check_motor_load(self) -> bool:
         speed_limit = 1.0
         motors_loaded = True
@@ -224,6 +237,8 @@ def test_motors(
     node = node_wrapper.node
     print_ok("DONE")
 
+    tester: Optional[MotorTester] = None
+
     try:
         board_type = check_firmware_node(node)
 
@@ -268,5 +283,7 @@ def test_motors(
             print_test_result(tester.test_torque(motors_loaded))
 
     finally:
+        if tester is not None:
+            tester.stop_motors()
         node.destroy_node()
         rclpy.shutdown()
