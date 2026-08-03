@@ -21,8 +21,12 @@
 from __future__ import annotations
 
 import sys
+import time
 from enum import Enum
 from typing import TypeVar, Optional
+
+import rclpy
+from rclpy.node import Node
 
 import yaml  # type: ignore
 from whichcraft import which
@@ -123,6 +127,16 @@ def prompt_options(options: list[tuple[str, T]], default: int = 1) -> T:
             _, selected = options[selected_nr]
             return selected
         print("Please select a valid option")
+
+
+def spin_for(node: Node, duration: float) -> None:
+    deadline = time.monotonic() + duration
+
+    while rclpy.ok():
+        timeout = deadline - time.monotonic()
+        if timeout <= 0.0:
+            break
+        rclpy.spin_once(node, timeout_sec=timeout)
 
 
 def parse_yaml(file_path: str):

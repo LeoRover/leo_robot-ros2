@@ -20,13 +20,11 @@
 
 import os
 from enum import Enum
-from argparse import Namespace
 from typing import Optional
 
 import rclpy
-from rclpy.task import Future
+from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from ros2cli.node.direct import DirectNode
 from ament_index_python.packages import get_package_share_directory
 
 from leo_msgs.msg import WheelStates
@@ -35,12 +33,18 @@ from std_msgs.msg import Float32
 from .board import BoardType, check_firmware_node
 from .utils import (
     write_flush,
+    spin_for,
     parse_yaml,
     query_yes_no,
     print_ok,
     print_warn,
     print_test_result,
 )
+
+NODE_DISCOVERY_TIME = 3.0
+TOPIC_DISCOVERY_TIME = 2.0
+MOTOR_STOP_TIME = 0.2
+PWM_RAMP_STEP_TIME = 0.2
 
 
 class MotorTestMode(Enum):
@@ -57,7 +61,7 @@ class MotorTester:
 
     WHEEL_NAMES = ["FL", "RL", "FR", "RR"]
 
-    def __init__(self, node: rclpy.node.Node):
+    def __init__(self, node: Node):
         self.path = os.path.join(
             get_package_share_directory("leo_fw"), "data", "hw_tests"
         )
@@ -103,8 +107,7 @@ class MotorTester:
             qos_profile_sensor_data,
         )
 
-        # Spin for 2 secods
-        rclpy.spin_until_future_complete(self.node, Future(), None, 2.0)
+        spin_for(self.node, TOPIC_DISCOVERY_TIME)
 
     def wheel_callback(self, data: WheelStates) -> None:
         self.wheel_data = data
@@ -121,7 +124,7 @@ class MotorTester:
         self.cmd_pwmrl_pub.publish(Float32(data=0.0))
         self.cmd_pwmrr_pub.publish(Float32(data=0.0))
 
-        rclpy.spin_until_future_complete(self.node, Future(), None, 0.2)
+        spin_for(self.node, MOTOR_STOP_TIME)
 
     def check_motor_load(self) -> bool:
         speed_limit = 1.0
@@ -135,7 +138,7 @@ class MotorTester:
             self.cmd_pwmrl_pub.publish(Float32(data=-pwm_value))
             self.cmd_pwmrr_pub.publish(Float32(data=-pwm_value))
 
-            rclpy.spin_until_future_complete(self.node, Future(), None, 0.2)
+            spin_for(self.node, PWM_RAMP_STEP_TIME)
 
             if (
                 self.wheel_data.velocity[0] > speed_limit
@@ -167,9 +170,7 @@ class MotorTester:
             self.cmd_velrl_pub.publish(Float32(data=wheel_test["velocity"]))
             self.cmd_velrr_pub.publish(Float32(data=wheel_test["velocity"]))
 
-            rclpy.spin_until_future_complete(
-                self.node, Future(), None, wheel_test["time"]
-            )
+            spin_for(self.node, wheel_test["time"])
 
             speed_min = wheel_test["velocity"] - wheel_test["tolerance"]
             speed_max = wheel_test["velocity"] + wheel_test["tolerance"]
@@ -204,9 +205,7 @@ class MotorTester:
             self.cmd_pwmrl_pub.publish(Float32(data=-torque_test["pwm"]))
             self.cmd_pwmrr_pub.publish(Float32(data=-torque_test["pwm"]))
 
-            rclpy.spin_until_future_complete(
-                self.node, Future(), None, torque_test["time"]
-            )
+            spin_for(self.node, torque_test["time"])
 
             for i in range(4):
                 if (
@@ -233,8 +232,9 @@ def test_motors(
     mode: MotorTestMode = MotorTestMode.ALL,
 ) -> None:
     write_flush("--> Initializing ROS node.. ")
-    node_wrapper = DirectNode(Namespace(node_name_suffix="motor_tester", spin_time=3.0))
-    node = node_wrapper.node
+    rclpy.init(args=None)
+    node = Node("leo_motor_tester")
+    spin_for(node, NODE_DISCOVERY_TIME)
     print_ok("DONE")
 
     tester: Optional[MotorTester] = None
@@ -286,4 +286,5 @@ def test_motors(
         if tester is not None:
             tester.stop_motors()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()

@@ -21,20 +21,24 @@
 import os
 import time
 from enum import Enum
-from argparse import Namespace
 from typing import Optional
 
 import rclpy
-from rclpy.task import Future
+from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from ros2cli.node.direct import DirectNode
 from ament_index_python.packages import get_package_share_directory
 
 from leo_msgs.msg import Imu
 from std_msgs.msg import Float32
 
 from .board import BoardType, check_firmware_node
-from .utils import write_flush, parse_yaml, print_ok, print_test_result
+from .utils import write_flush, spin_for, parse_yaml, print_ok, print_test_result
+
+# Time given to the ROS graph to be discovered before it gets inspected
+NODE_DISCOVERY_TIME = 3.0
+
+# Time given to the subscriptions to match with the firmware publishers
+TOPIC_DISCOVERY_TIME = 2.0
 
 
 class TestMode(Enum):
@@ -49,7 +53,7 @@ class TestMode(Enum):
 class HardwareTester:
     """Validates the sensors that do not require the robot to move."""
 
-    def __init__(self, node: rclpy.node.Node):
+    def __init__(self, node: Node):
         self.path = os.path.join(
             get_package_share_directory("leo_fw"), "data", "hw_tests"
         )
@@ -71,8 +75,7 @@ class HardwareTester:
             Imu, "firmware/imu", self.imu_callback, qos_profile_sensor_data
         )
 
-        # Spin for 2 secods
-        rclpy.spin_until_future_complete(self.node, Future(), None, 2.0)
+        spin_for(self.node, TOPIC_DISCOVERY_TIME)
 
     def battery_callback(self, data: Float32) -> None:
         self.battery_data = data
@@ -98,7 +101,7 @@ class HardwareTester:
         gyro_z = imu_valid["imu"]["gyro_z"]
 
         while msg_cnt < 50:
-            rclpy.spin_once(self.node)
+            rclpy.spin_once(self.node, timeout_sec=imu_valid["imu"]["timeout"])
 
             time_now = time.monotonic()
             if time_last_msg + imu_valid["imu"]["timeout"] < time_now:
@@ -131,7 +134,7 @@ class HardwareTester:
         batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))
 
         while msg_cnt < 50:
-            rclpy.spin_once(self.node)
+            rclpy.spin_once(self.node, timeout_sec=batt_valid["battery"]["timeout"])
 
             time_now = time.monotonic()
             if time_last_msg + batt_valid["battery"]["timeout"] < time_now:
@@ -154,10 +157,9 @@ def test_hw(
     hardware: TestMode = TestMode.ALL,
 ) -> None:
     write_flush("--> Initializing ROS node.. ")
-    node_wrapper = DirectNode(
-        Namespace(node_name_suffix="firmware_tester", spin_time=3.0)
-    )
-    node = node_wrapper.node
+    rclpy.init(args=None)
+    node = Node("leo_hardware_tester")
+    spin_for(node, NODE_DISCOVERY_TIME)
     print_ok("DONE")
 
     try:
@@ -184,4 +186,5 @@ def test_hw(
 
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
