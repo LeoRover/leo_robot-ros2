@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+
+import argparse
+
+import leo_fw
+from leo_fw.test_motors import MotorTestMode
+
+parser = argparse.ArgumentParser(description="Test Leo Rover motors")
+
+parser.add_argument(
+    "-m",
+    dest="mode",
+    type=MotorTestMode,
+    choices=list(MotorTestMode),
+    default="all",
+    help="select test mode",
+)
+
+args = parser.parse_args()
+
+leo_fw.test_motors(mode=args.mode)

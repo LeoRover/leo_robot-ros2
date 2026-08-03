@@ -28,6 +28,8 @@ from rclpy.client import Client
 
 from std_srvs.srv import Trigger
 
+from .utils import write_flush, print_ok, print_warn, print_fail
+
 
 class BoardType(Enum):
     LEOCORE = "leocore"
@@ -84,3 +86,54 @@ def check_firmware_version(node: rclpy.Node) -> str:
         get_firmware_version.destroy()
 
     return firmware_version
+
+
+def check_firmware_node(node: rclpy.Node) -> Optional[BoardType]:
+    """
+    Verify that the firmware node is running and report the board it runs on.
+
+    Prints the board type and the firmware version it reports.
+    """
+    write_flush("--> Checking if firmware node is active.. ")
+
+    if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
+        print_ok("YES")
+    else:
+        print_fail("NO")
+        print_warn(
+            "Firmware node is not active. "
+            "Will not be able to validate hardware. "
+            "Try to flash the firmware or restart the Micro-ROS Agent."
+        )
+        return None
+
+    write_flush("--> Trying to determine board type.. ")
+
+    board_type = determine_board(node)
+
+    if board_type is not None:
+        print_ok("SUCCESS")
+    else:
+        print_fail("FAIL")
+        print_warn(
+            "Can not determine board type. "
+            "Update the firmware and try to rerun the script."
+        )
+        return None
+
+    write_flush("--> Trying to check the current firmware version.. ")
+
+    current_firmware_version = check_firmware_version(node)
+
+    if current_firmware_version != "<unknown>":
+        print_ok("SUCCESS")
+    else:
+        print_fail("FAIL")
+
+    if board_type == BoardType.CORE2:
+        print("Board type: Husarion CORE2")
+    elif board_type == BoardType.LEOCORE:
+        print("Board type: LeoCore")
+    print(f"Firmware version: {current_firmware_version}")
+
+    return board_type
