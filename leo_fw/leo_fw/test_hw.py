@@ -103,28 +103,11 @@ class HardwareTester:
         try:
             with log_step("Validating IMU data"):
                 imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))["imu"]
-                timeout = imu_valid["timeout"]
 
-                msg_cnt = 0
-                time_last_msg = time.monotonic()
-
-                while msg_cnt < IMU_SAMPLES:
-                    rclpy.spin_once(self.node, timeout_sec=timeout)
-
-                    time_now = time.monotonic()
-                    if time_last_msg + timeout < time_now:
-                        msg = (
-                            f"No IMU message received within {timeout:.2f} s "
-                            f"({msg_cnt}/{IMU_SAMPLES} samples collected)"
-                        )
-                        raise TimeoutError(msg)
-
-                    if self.is_new_imu_data:
-                        time_last_msg = time_now
-                        self.is_new_imu_data = False
-                        msg_cnt += 1
-
-                        self._verify_imu_sample(self.imu_data, imu_valid)
+                samples = self._collect_imu_samples(
+                    IMU_SAMPLES, imu_valid["timeout"]
+                )
+                self._validate_imu_samples(samples, imu_valid)
         except (TimeoutError, ValueError) as exc:
             self.logger.error(
                 "IMU test failed. Make sure the robot is stationary "
@@ -134,12 +117,48 @@ class HardwareTester:
             return False
         return True
 
-    def _verify_imu_sample(self, sample: Imu, limits: dict) -> None:
+    def _collect_imu_samples(self, sample_count: int, timeout: float) -> list[Imu]:
         """
-        Verify a single IMU message against the configured limits.
+        Collect a fixed number of fresh IMU messages.
 
-        :param sample: The IMU message to validate
-        :type sample: Imu
+        :param sample_count: Number of messages to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two messages, in seconds
+        :type timeout: float
+        :return: The collected messages
+        :rtype: list[Imu]
+        :raises TimeoutError: If the messages stop arriving
+        """
+        samples: list[Imu] = []
+        time_last_msg = time.monotonic()
+
+        while len(samples) < sample_count:
+            rclpy.spin_once(self.node, timeout_sec=timeout)
+
+            time_now = time.monotonic()
+            if time_last_msg + timeout < time_now:
+                msg = (
+                    f"No IMU message received within {timeout:.2f} s "
+                    f"({len(samples)}/{sample_count} samples collected)"
+                )
+                raise TimeoutError(msg)
+
+            if self.is_new_imu_data:
+                time_last_msg = time_now
+                self.is_new_imu_data = False
+                samples.append(self.imu_data)
+
+        return samples
+
+    def _validate_imu_samples(self, samples: list[Imu], limits: dict) -> None:
+        """
+        Validate every collected IMU sample against the configured limits.
+
+        Reports each axis once, with the count of offending samples and the
+        reading that deviated the most.
+
+        :param samples: The IMU messages to validate
+        :type samples: list[Imu]
         :param limits: The "imu" section of the imu.yaml file
         :type limits: dict
         :raises ValueError: If any of the axes is outside of its tolerance
@@ -147,20 +166,41 @@ class HardwareTester:
         accel_del = limits["accel_del"]
         gyro_del = limits["gyro_del"]
 
-        for name, value, expected, tolerance, unit in (
-            ("accel_x", sample.accel_x, limits["accel_x"], accel_del, "m/s^2"),
-            ("accel_y", sample.accel_y, limits["accel_y"], accel_del, "m/s^2"),
-            ("accel_z", abs(sample.accel_z), limits["accel_z"], accel_del, "m/s^2"),
-            ("gyro_x", sample.gyro_x, limits["gyro_x"], gyro_del, "rad/s"),
-            ("gyro_y", sample.gyro_y, limits["gyro_y"], gyro_del, "rad/s"),
-            ("gyro_z", sample.gyro_z, limits["gyro_z"], gyro_del, "rad/s"),
-        ):
-            if not expected - tolerance < value < expected + tolerance:
-                msg = (
-                    f"IMU {name}={value:.3f} {unit} deviates from the expected "
-                    f"{expected:.3f} {unit} by more than {tolerance:.3f} {unit}"
+        axes = (
+            ("accel_x", lambda s: s.accel_x, limits["accel_x"], accel_del, "m/s^2"),
+            ("accel_y", lambda s: s.accel_y, limits["accel_y"], accel_del, "m/s^2"),
+            (
+                "accel_z",
+                lambda s: abs(s.accel_z),
+                limits["accel_z"],
+                accel_del,
+                "m/s^2",
+            ),
+            ("gyro_x", lambda s: s.gyro_x, limits["gyro_x"], gyro_del, "rad/s"),
+            ("gyro_y", lambda s: s.gyro_y, limits["gyro_y"], gyro_del, "rad/s"),
+            ("gyro_z", lambda s: s.gyro_z, limits["gyro_z"], gyro_del, "rad/s"),
+        )
+
+        failures: list[str] = []
+
+        for name, get_value, expected, tolerance, unit in axes:
+            values = [get_value(sample) for sample in samples]
+            invalid = [
+                value
+                for value in values
+                if not expected - tolerance < value < expected + tolerance
+            ]
+
+            if invalid:
+                worst = max(invalid, key=lambda value: abs(value - expected))
+                failures.append(
+                    f"{name} was out of range in {len(invalid)}/{len(values)} "
+                    f"samples, worst {worst:.3f} {unit} against the expected "
+                    f"{expected:.3f} +/- {tolerance:.3f} {unit}"
                 )
-                raise ValueError(msg)
+
+        if failures:
+            raise ValueError("; ".join(failures))
 
     def test_battery(self) -> bool:
         """
@@ -174,55 +214,82 @@ class HardwareTester:
                 batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))[
                     "battery"
                 ]
-                timeout = batt_valid["timeout"]
 
-                msg_cnt = 0
-                time_last_msg = time.monotonic()
-
-                while msg_cnt < BATTERY_SAMPLES:
-                    rclpy.spin_once(self.node, timeout_sec=timeout)
-
-                    time_now = time.monotonic()
-                    if time_last_msg + timeout < time_now:
-                        msg = (
-                            f"No battery message received within {timeout:.2f} s "
-                            f"({msg_cnt}/{BATTERY_SAMPLES} samples collected)"
-                        )
-                        raise TimeoutError(msg)
-
-                    if self.is_new_battery_data:
-                        time_last_msg = time_now
-                        self.is_new_battery_data = False
-                        msg_cnt += 1
-
-                        self._verify_battery_voltage(self.battery_data.data, batt_valid)
+                samples = self._collect_battery_samples(
+                    BATTERY_SAMPLES, batt_valid["timeout"]
+                )
+                self._validate_battery_samples(samples, batt_valid)
         except (TimeoutError, ValueError) as exc:
             self.logger.error("Battery test failed: %s", exc)
             return False
         return True
 
-    def _verify_battery_voltage(self, voltage: float, limits: dict) -> None:
+    def _collect_battery_samples(
+        self, sample_count: int, timeout: float
+    ) -> list[float]:
         """
-        Verify a single battery voltage reading against the configured limits.
+        Collect a fixed number of fresh battery voltage readings.
 
-        :param voltage: The measured battery voltage
-        :type voltage: float
+        :param sample_count: Number of readings to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two messages, in seconds
+        :type timeout: float
+        :return: The collected voltages
+        :rtype: list[float]
+        :raises TimeoutError: If the messages stop arriving
+        """
+        samples: list[float] = []
+        time_last_msg = time.monotonic()
+
+        while len(samples) < sample_count:
+            rclpy.spin_once(self.node, timeout_sec=timeout)
+
+            time_now = time.monotonic()
+            if time_last_msg + timeout < time_now:
+                msg = (
+                    f"No battery message received within {timeout:.2f} s "
+                    f"({len(samples)}/{sample_count} samples collected)"
+                )
+                raise TimeoutError(msg)
+
+            if self.is_new_battery_data:
+                time_last_msg = time_now
+                self.is_new_battery_data = False
+                samples.append(self.battery_data.data)
+
+        return samples
+
+    def _validate_battery_samples(self, samples: list[float], limits: dict) -> None:
+        """
+        Validate every collected voltage reading against the configured limits.
+
+        :param samples: The collected voltages
+        :type samples: list[float]
         :param limits: The "battery" section of the battery.yaml file
         :type limits: dict
-        :raises ValueError: If the voltage is outside of the valid range
+        :raises ValueError: If any reading is outside of the valid range
         """
-        if voltage <= limits["voltage_min"]:
-            msg = (
-                f"Battery voltage {voltage:.2f} V is at or below "
-                f"the minimum of {limits['voltage_min']:.2f} V"
+        voltage_min = limits["voltage_min"]
+        voltage_max = limits["voltage_max"]
+
+        too_low = [voltage for voltage in samples if voltage <= voltage_min]
+        too_high = [voltage for voltage in samples if voltage >= voltage_max]
+
+        failures: list[str] = []
+
+        if too_low:
+            failures.append(
+                f"{len(too_low)}/{len(samples)} samples at or below the minimum "
+                f"of {voltage_min:.2f} V, lowest {min(too_low):.2f} V"
             )
-            raise ValueError(msg)
-        if voltage >= limits["voltage_max"]:
-            msg = (
-                f"Battery voltage {voltage:.2f} V is at or above "
-                f"the maximum of {limits['voltage_max']:.2f} V"
+        if too_high:
+            failures.append(
+                f"{len(too_high)}/{len(samples)} samples at or above the maximum "
+                f"of {voltage_max:.2f} V, highest {max(too_high):.2f} V"
             )
-            raise ValueError(msg)
+
+        if failures:
+            raise ValueError("; ".join(failures))
 
 
 def test_hw(

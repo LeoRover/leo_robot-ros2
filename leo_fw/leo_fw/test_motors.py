@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 
 import os
+import time
 from enum import Enum
 from typing import Optional
 
@@ -43,6 +44,11 @@ NODE_DISCOVERY_TIME = 3.0
 TOPIC_DISCOVERY_TIME = 2.0
 MOTOR_STOP_TIME = 0.2
 PWM_RAMP_STEP_TIME = 0.2
+
+# Number of wheel states validated at the end of every test step, and the
+# longest accepted gap between two of them
+WHEEL_SAMPLES = 10
+WHEEL_SAMPLE_TIMEOUT = 0.5
 
 _log = get_logger("test_motors")
 
@@ -114,6 +120,41 @@ class MotorTester:
         self.wheel_data = data
         self.is_new_wheel_data = True
 
+    def _collect_wheel_samples(
+        self, sample_count: int, timeout: float
+    ) -> list[WheelStates]:
+        """
+        Collect a fixed number of fresh wheel state messages.
+
+        :param sample_count: Number of messages to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two messages, in seconds
+        :type timeout: float
+        :return: The collected messages
+        :rtype: list[WheelStates]
+        :raises TimeoutError: If the messages stop arriving
+        """
+        samples: list[WheelStates] = []
+        time_last_msg = time.monotonic()
+
+        while len(samples) < sample_count:
+            rclpy.spin_once(self.node, timeout_sec=timeout)
+
+            time_now = time.monotonic()
+            if time_last_msg + timeout < time_now:
+                msg = (
+                    f"No wheel states message received within {timeout:.2f} s "
+                    f"({len(samples)}/{sample_count} samples collected)"
+                )
+                raise TimeoutError(msg)
+
+            if self.is_new_wheel_data:
+                time_last_msg = time_now
+                self.is_new_wheel_data = False
+                samples.append(self.wheel_data)
+
+        return samples
+
     def _publish_velocity(self, velocity: float) -> None:
         """Command the same velocity on every wheel, driving the robot forward."""
         self.cmd_velfl_pub.publish(Float32(data=velocity))
@@ -181,40 +222,54 @@ class MotorTester:
                     for wheel_test in wheel_valid["tests"]:
                         self._publish_velocity(wheel_test["velocity"])
                         spin_for(self.node, wheel_test["time"])
-                        self._collect_velocity_errors(wheel_test, errors)
+                        samples = self._collect_wheel_samples(
+                            WHEEL_SAMPLES, WHEEL_SAMPLE_TIMEOUT
+                        )
+                        self._collect_velocity_errors(wheel_test, samples, errors)
                 finally:
                     self._publish_velocity(0.0)
 
                 self._check_wheel_errors(errors)
-        except ValueError as exc:
+        except (TimeoutError, ValueError) as exc:
             self.logger.error("Encoder test failed: %s", exc)
             return False
         return True
 
     def _collect_velocity_errors(
-        self, wheel_test: dict, errors: dict[str, str]
+        self, wheel_test: dict, samples: list[WheelStates], errors: dict[str, str]
     ) -> None:
         """
         Record the wheels whose velocity is outside of the tolerance.
 
-        Only the first failure of a given wheel is kept, so that every faulty
-        wheel gets reported exactly once.
+        Only the first failing step of a given wheel is kept, so that every
+        faulty wheel gets reported exactly once.
 
         :param wheel_test: A single entry of the encoder yaml "tests" list
         :type wheel_test: dict
+        :param samples: Wheel states collected at the end of the step
+        :type samples: list[WheelStates]
         :param errors: Mapping of wheel name to its failure description
         :type errors: dict[str, str]
         """
-        speed_min = wheel_test["velocity"] - wheel_test["tolerance"]
-        speed_max = wheel_test["velocity"] + wheel_test["tolerance"]
+        setpoint = wheel_test["velocity"]
+        speed_min = setpoint - wheel_test["tolerance"]
+        speed_max = setpoint + wheel_test["tolerance"]
 
         for i, name in enumerate(self.WHEEL_NAMES):
-            velocity = self.wheel_data.velocity[i]
-            if not speed_min < velocity < speed_max and name not in errors:
+            if name in errors:
+                continue
+
+            values = [sample.velocity[i] for sample in samples]
+            invalid = [
+                value for value in values if not speed_min < value < speed_max
+            ]
+
+            if invalid:
+                worst = max(invalid, key=lambda value: abs(value - setpoint))
                 errors[name] = (
-                    f"{name} reported {velocity:.2f} rad/s at a "
-                    f"{wheel_test['velocity']:.2f} rad/s setpoint, outside of "
-                    f"{speed_min:.2f}..{speed_max:.2f} rad/s"
+                    f"{name} was out of range in {len(invalid)}/{len(values)} "
+                    f"samples at a {setpoint:.2f} rad/s setpoint, worst "
+                    f"{worst:.2f} rad/s against {speed_min:.2f}..{speed_max:.2f} rad/s"
                 )
 
     def test_torque(self, motors_loaded: bool = True) -> bool:
@@ -241,38 +296,54 @@ class MotorTester:
                     for torque_test in torque_valid["tests"]:
                         self._publish_pwm(torque_test["pwm"])
                         spin_for(self.node, torque_test["time"])
-                        self._collect_torque_errors(torque_test, errors)
+                        samples = self._collect_wheel_samples(
+                            WHEEL_SAMPLES, WHEEL_SAMPLE_TIMEOUT
+                        )
+                        self._collect_torque_errors(torque_test, samples, errors)
                 finally:
                     self._publish_pwm(0.0)
 
                 self._check_wheel_errors(errors)
-        except ValueError as exc:
+        except (TimeoutError, ValueError) as exc:
             self.logger.error("Torque sensor test failed: %s", exc)
             return False
         return True
 
-    def _collect_torque_errors(self, torque_test: dict, errors: dict[str, str]) -> None:
+    def _collect_torque_errors(
+        self, torque_test: dict, samples: list[WheelStates], errors: dict[str, str]
+    ) -> None:
         """
         Record the wheels whose torque is outside of the valid range.
 
-        Only the first failure of a given wheel is kept, so that every faulty
-        wheel gets reported exactly once.
+        Only the first failing step of a given wheel is kept, so that every
+        faulty wheel gets reported exactly once.
 
         :param torque_test: A single entry of the torque yaml "tests" list
         :type torque_test: dict
+        :param samples: Wheel states collected at the end of the step
+        :type samples: list[WheelStates]
         :param errors: Mapping of wheel name to its failure description
         :type errors: dict[str, str]
         """
         torque_min = torque_test["torque_min"]
         torque_max = torque_test["torque_max"]
+        midpoint = (torque_min + torque_max) / 2.0
 
         for i, name in enumerate(self.WHEEL_NAMES):
-            torque = self.wheel_data.torque[i]
-            if not torque_min <= torque <= torque_max and name not in errors:
+            if name in errors:
+                continue
+
+            values = [sample.torque[i] for sample in samples]
+            invalid = [
+                value for value in values if not torque_min <= value <= torque_max
+            ]
+
+            if invalid:
+                worst = max(invalid, key=lambda value: abs(value - midpoint))
                 errors[name] = (
-                    f"{name} reported {torque:.3f} Nm at a "
-                    f"{torque_test['pwm']:.0f}% PWM duty, outside of "
-                    f"{torque_min:.3f}..{torque_max:.3f} Nm"
+                    f"{name} was out of range in {len(invalid)}/{len(values)} "
+                    f"samples at a {torque_test['pwm']:.0f}% PWM duty, worst "
+                    f"{worst:.3f} Nm against {torque_min:.3f}..{torque_max:.3f} Nm"
                 )
 
     def _check_wheel_errors(self, errors: dict[str, str]) -> None:
