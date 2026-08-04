@@ -48,7 +48,7 @@ def determine_board(node: rclpy.Node) -> Optional[BoardType]:
 
     board_type = None
 
-    if node.get_namespace() + "firmware/get_board_type" in [
+    if node.resolve_service_name("firmware/get_board_type") in [
         service[0] for service in services
     ]:
         get_board_type: Client = node.create_client(Trigger, "firmware/get_board_type")
@@ -73,7 +73,7 @@ def check_firmware_version(node: rclpy.Node) -> str:
 
     firmware_version = "<unknown>"
 
-    if node.get_namespace() + "firmware/get_firmware_version" in [
+    if node.resolve_service_name("firmware/get_firmware_version") in [
         service[0] for service in services
     ]:
         get_firmware_version: Client = node.create_client(
