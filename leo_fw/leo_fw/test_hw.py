@@ -32,13 +32,20 @@ from leo_msgs.msg import Imu
 from std_msgs.msg import Float32
 
 from .board import BoardType, check_firmware_node
-from .utils import write_flush, spin_for, parse_yaml, print_ok, print_test_result
+from .console import get_logger, log_step, report_results
+from .utils import spin_for, parse_yaml
 
 # Time given to the ROS graph to be discovered before it gets inspected
 NODE_DISCOVERY_TIME = 3.0
 
 # Time given to the subscriptions to match with the firmware publishers
 TOPIC_DISCOVERY_TIME = 2.0
+
+# Number of messages each sensor test has to validate
+IMU_SAMPLES = 20
+BATTERY_SAMPLES = 20
+
+_log = get_logger("test_hw")
 
 
 class TestMode(Enum):
@@ -58,6 +65,7 @@ class HardwareTester:
             get_package_share_directory("leo_fw"), "data", "hw_tests"
         )
 
+        self.logger = get_logger("HardwareTester")
         self.node = node
 
         self.is_new_imu_data = False
@@ -85,105 +93,180 @@ class HardwareTester:
         self.imu_data = data
         self.is_new_imu_data = True
 
-    def test_imu(self) -> tuple[bool, Optional[str]]:
-        msg_cnt = 0
-        time_last_msg = time.monotonic()
-        imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))
+    def test_imu(self) -> bool:
+        """
+        Validate the IMU readings while the robot is stationary.
 
-        accel_del = imu_valid["imu"]["accel_del"]
-        accel_x = imu_valid["imu"]["accel_x"]
-        accel_y = imu_valid["imu"]["accel_y"]
-        accel_z = imu_valid["imu"]["accel_z"]
+        :return: True if all of the IMU checks pass, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Validating IMU data"):
+                imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))["imu"]
+                timeout = imu_valid["timeout"]
 
-        gyro_del = imu_valid["imu"]["gyro_del"]
-        gyro_x = imu_valid["imu"]["gyro_x"]
-        gyro_y = imu_valid["imu"]["gyro_y"]
-        gyro_z = imu_valid["imu"]["gyro_z"]
+                msg_cnt = 0
+                time_last_msg = time.monotonic()
 
-        while msg_cnt < 50:
-            rclpy.spin_once(self.node, timeout_sec=imu_valid["imu"]["timeout"])
+                while msg_cnt < IMU_SAMPLES:
+                    rclpy.spin_once(self.node, timeout_sec=timeout)
 
-            time_now = time.monotonic()
-            if time_last_msg + imu_valid["imu"]["timeout"] < time_now:
-                return False, "TIMEOUT"
+                    time_now = time.monotonic()
+                    if time_last_msg + timeout < time_now:
+                        msg = (
+                            f"No IMU message received within {timeout:.2f} s "
+                            f"({msg_cnt}/{IMU_SAMPLES} samples collected)"
+                        )
+                        raise TimeoutError(msg)
 
-            if self.is_new_imu_data:
-                time_last_msg = time_now
-                self.is_new_imu_data = False
-                msg_cnt += 1
+                    if self.is_new_imu_data:
+                        time_last_msg = time_now
+                        self.is_new_imu_data = False
+                        msg_cnt += 1
 
-                if not (
-                    accel_x - accel_del < self.imu_data.accel_x < accel_x + accel_del
-                    and accel_y - accel_del
-                    < self.imu_data.accel_y
-                    < accel_y + accel_del
-                    and accel_z - accel_del
-                    < abs(self.imu_data.accel_z)
-                    < accel_z + accel_del
-                    and gyro_x - gyro_del < self.imu_data.gyro_x < gyro_x + gyro_del
-                    and gyro_y - gyro_del < self.imu_data.gyro_y < gyro_y + gyro_del
-                    and gyro_z - gyro_del < self.imu_data.gyro_z < gyro_z + gyro_del
-                ):
-                    return False, "INVALID DATA"
+                        self._verify_imu_sample(self.imu_data, imu_valid)
+        except (TimeoutError, ValueError) as exc:
+            self.logger.error(
+                "IMU test failed. Make sure the robot is stationary "
+                "and the IMU data is being published: %s",
+                exc,
+            )
+            return False
+        return True
 
-        return True, None
+    def _verify_imu_sample(self, sample: Imu, limits: dict) -> None:
+        """
+        Verify a single IMU message against the configured limits.
 
-    def test_battery(self) -> tuple[bool, Optional[str]]:
-        msg_cnt = 0
-        time_last_msg = time.monotonic()
-        batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))
+        :param sample: The IMU message to validate
+        :type sample: Imu
+        :param limits: The "imu" section of the imu.yaml file
+        :type limits: dict
+        :raises ValueError: If any of the axes is outside of its tolerance
+        """
+        accel_del = limits["accel_del"]
+        gyro_del = limits["gyro_del"]
 
-        while msg_cnt < 50:
-            rclpy.spin_once(self.node, timeout_sec=batt_valid["battery"]["timeout"])
+        for name, value, expected, tolerance, unit in (
+            ("accel_x", sample.accel_x, limits["accel_x"], accel_del, "m/s^2"),
+            ("accel_y", sample.accel_y, limits["accel_y"], accel_del, "m/s^2"),
+            ("accel_z", abs(sample.accel_z), limits["accel_z"], accel_del, "m/s^2"),
+            ("gyro_x", sample.gyro_x, limits["gyro_x"], gyro_del, "rad/s"),
+            ("gyro_y", sample.gyro_y, limits["gyro_y"], gyro_del, "rad/s"),
+            ("gyro_z", sample.gyro_z, limits["gyro_z"], gyro_del, "rad/s"),
+        ):
+            if not expected - tolerance < value < expected + tolerance:
+                msg = (
+                    f"IMU {name}={value:.3f} {unit} deviates from the expected "
+                    f"{expected:.3f} {unit} by more than {tolerance:.3f} {unit}"
+                )
+                raise ValueError(msg)
 
-            time_now = time.monotonic()
-            if time_last_msg + batt_valid["battery"]["timeout"] < time_now:
-                return False, "TIMEOUT"
+    def test_battery(self) -> bool:
+        """
+        Validate the battery voltage readings.
 
-            if self.is_new_battery_data:
-                time_last_msg = time_now
-                self.is_new_battery_data = False
-                msg_cnt += 1
+        :return: True if all of the battery checks pass, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Checking the battery voltage"):
+                batt_valid = parse_yaml(os.path.join(self.path, "battery.yaml"))[
+                    "battery"
+                ]
+                timeout = batt_valid["timeout"]
 
-                if self.battery_data.data <= batt_valid["battery"]["voltage_min"]:
-                    return False, "LOW VOLTAGE"
-                if self.battery_data.data >= batt_valid["battery"]["voltage_max"]:
-                    return False, "HIGH VOLTAGE"
+                msg_cnt = 0
+                time_last_msg = time.monotonic()
 
-        return True, None
+                while msg_cnt < BATTERY_SAMPLES:
+                    rclpy.spin_once(self.node, timeout_sec=timeout)
+
+                    time_now = time.monotonic()
+                    if time_last_msg + timeout < time_now:
+                        msg = (
+                            f"No battery message received within {timeout:.2f} s "
+                            f"({msg_cnt}/{BATTERY_SAMPLES} samples collected)"
+                        )
+                        raise TimeoutError(msg)
+
+                    if self.is_new_battery_data:
+                        time_last_msg = time_now
+                        self.is_new_battery_data = False
+                        msg_cnt += 1
+
+                        self._verify_battery_voltage(self.battery_data.data, batt_valid)
+        except (TimeoutError, ValueError) as exc:
+            self.logger.error("Battery test failed: %s", exc)
+            return False
+        return True
+
+    def _verify_battery_voltage(self, voltage: float, limits: dict) -> None:
+        """
+        Verify a single battery voltage reading against the configured limits.
+
+        :param voltage: The measured battery voltage
+        :type voltage: float
+        :param limits: The "battery" section of the battery.yaml file
+        :type limits: dict
+        :raises ValueError: If the voltage is outside of the valid range
+        """
+        if voltage <= limits["voltage_min"]:
+            msg = (
+                f"Battery voltage {voltage:.2f} V is at or below "
+                f"the minimum of {limits['voltage_min']:.2f} V"
+            )
+            raise ValueError(msg)
+        if voltage >= limits["voltage_max"]:
+            msg = (
+                f"Battery voltage {voltage:.2f} V is at or above "
+                f"the maximum of {limits['voltage_max']:.2f} V"
+            )
+            raise ValueError(msg)
 
 
 def test_hw(
     hardware: TestMode = TestMode.ALL,
     ros_args: Optional[list[str]] = None,
-) -> None:
-    write_flush("--> Initializing ROS node.. ")
-    rclpy.init(args=ros_args)
-    node = Node("leo_hardware_tester")
-    spin_for(node, NODE_DISCOVERY_TIME)
-    print_ok("DONE")
+) -> int:
+    """
+    Run the hardware tests that do not require the robot to move.
+
+    :param hardware: Which of the tests to run
+    :type hardware: TestMode
+    :param ros_args: Arguments forwarded to rclpy, or None to use sys.argv
+    :type ros_args: Optional[list[str]]
+    :return: 0 if every check passed, 1 otherwise
+    :rtype: int
+    """
+    _log.info("Starting hardware tests.")
+
+    with log_step("Initializing ROS node"):
+        rclpy.init(args=ros_args)
+        node = Node("leo_hardware_tester")
+        spin_for(node, NODE_DISCOVERY_TIME)
 
     try:
         board_type = check_firmware_node(node)
 
         if board_type is None:
-            return
+            return 1
 
-        #####################################################
+        with log_step("Initializing the hardware tester"):
+            tester = HardwareTester(node)
 
-        write_flush("--> Initializing Hardware Tester.. ")
-        tester = HardwareTester(node)
-        print_ok("DONE")
-
-        #####################################################
+        results: list[tuple[str, bool]] = []
 
         if hardware in (TestMode.ALL, TestMode.BATTERY):
-            write_flush("--> Battery validation.. ")
-            print_test_result(tester.test_battery())
+            results.append(("Battery voltage", tester.test_battery()))
 
         if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
-            write_flush("--> IMU validation.. ")
-            print_test_result(tester.test_imu())
+            results.append(("IMU", tester.test_imu()))
+
+        if not results:
+            _log.warning("No test was selected to run.")
+
+        return report_results(_log, results)
 
     finally:
         node.destroy_node()

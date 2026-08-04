@@ -31,20 +31,20 @@ from leo_msgs.msg import WheelStates
 from std_msgs.msg import Float32
 
 from .board import BoardType, check_firmware_node
-from .utils import (
-    write_flush,
-    spin_for,
-    parse_yaml,
-    query_yes_no,
-    print_ok,
-    print_warn,
-    print_test_result,
+from .console import (
+    get_confirmation_prompt,
+    get_logger,
+    log_step,
+    report_results,
 )
+from .utils import spin_for, parse_yaml
 
 NODE_DISCOVERY_TIME = 3.0
 TOPIC_DISCOVERY_TIME = 2.0
 MOTOR_STOP_TIME = 0.2
 PWM_RAMP_STEP_TIME = 0.2
+
+_log = get_logger("test_motors")
 
 
 class MotorTestMode(Enum):
@@ -66,6 +66,7 @@ class MotorTester:
             get_package_share_directory("leo_fw"), "data", "hw_tests"
         )
 
+        self.logger = get_logger("MotorTester")
         self.node = node
 
         self.is_new_wheel_data = False
@@ -113,16 +114,23 @@ class MotorTester:
         self.wheel_data = data
         self.is_new_wheel_data = True
 
-    def stop_motors(self) -> None:
-        self.cmd_velfl_pub.publish(Float32(data=0.0))
-        self.cmd_velfr_pub.publish(Float32(data=0.0))
-        self.cmd_velrl_pub.publish(Float32(data=0.0))
-        self.cmd_velrr_pub.publish(Float32(data=0.0))
+    def _publish_velocity(self, velocity: float) -> None:
+        """Command the same velocity on every wheel, driving the robot forward."""
+        self.cmd_velfl_pub.publish(Float32(data=velocity))
+        self.cmd_velfr_pub.publish(Float32(data=velocity))
+        self.cmd_velrl_pub.publish(Float32(data=velocity))
+        self.cmd_velrr_pub.publish(Float32(data=velocity))
 
-        self.cmd_pwmfl_pub.publish(Float32(data=0.0))
-        self.cmd_pwmfr_pub.publish(Float32(data=0.0))
-        self.cmd_pwmrl_pub.publish(Float32(data=0.0))
-        self.cmd_pwmrr_pub.publish(Float32(data=0.0))
+    def _publish_pwm(self, pwm: float) -> None:
+        """Command the given PWM duty, with the sides opposed so the robot spins."""
+        self.cmd_pwmfl_pub.publish(Float32(data=pwm))
+        self.cmd_pwmfr_pub.publish(Float32(data=pwm))
+        self.cmd_pwmrl_pub.publish(Float32(data=-pwm))
+        self.cmd_pwmrr_pub.publish(Float32(data=-pwm))
+
+    def stop_motors(self) -> None:
+        self._publish_velocity(0.0)
+        self._publish_pwm(0.0)
 
         spin_for(self.node, MOTOR_STOP_TIME)
 
@@ -130,113 +138,178 @@ class MotorTester:
         speed_limit = 1.0
         motors_loaded = True
 
-        for pwm in range(30):
-            pwm_value = float(pwm)
+        try:
+            for pwm in range(30):
+                self._publish_pwm(float(pwm))
 
-            self.cmd_pwmfl_pub.publish(Float32(data=pwm_value))
-            self.cmd_pwmfr_pub.publish(Float32(data=pwm_value))
-            self.cmd_pwmrl_pub.publish(Float32(data=-pwm_value))
-            self.cmd_pwmrr_pub.publish(Float32(data=-pwm_value))
+                spin_for(self.node, PWM_RAMP_STEP_TIME)
 
-            spin_for(self.node, PWM_RAMP_STEP_TIME)
-
-            if (
-                self.wheel_data.velocity[0] > speed_limit
-                and self.wheel_data.velocity[1] < -speed_limit
-                and self.wheel_data.velocity[2] > speed_limit
-                and self.wheel_data.velocity[3] < -speed_limit
-            ):
-                motors_loaded = False
-                break
-
-        self.cmd_pwmfl_pub.publish(Float32(data=0.0))
-        self.cmd_pwmfr_pub.publish(Float32(data=0.0))
-        self.cmd_pwmrl_pub.publish(Float32(data=0.0))
-        self.cmd_pwmrr_pub.publish(Float32(data=0.0))
+                if (
+                    self.wheel_data.velocity[0] > speed_limit
+                    and self.wheel_data.velocity[1] < -speed_limit
+                    and self.wheel_data.velocity[2] > speed_limit
+                    and self.wheel_data.velocity[3] < -speed_limit
+                ):
+                    motors_loaded = False
+                    break
+        finally:
+            self._publish_pwm(0.0)
 
         return motors_loaded
 
-    def test_encoder(self, motors_loaded=True) -> tuple[bool, Optional[str]]:
-        is_error = [False] * 4
+    def test_encoder(self, motors_loaded: bool = True) -> bool:
+        """
+        Validate the wheel encoders by driving the wheels at set velocities.
 
-        if motors_loaded:
-            wheel_valid = parse_yaml(os.path.join(self.path, "encoder_load.yaml"))
-        else:
-            wheel_valid = parse_yaml(os.path.join(self.path, "encoder.yaml"))
+        :param motors_loaded: Whether the wheels are loaded, selecting the limits
+        :type motors_loaded: bool
+        :return: True if every wheel reported a valid velocity, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Validating the wheel encoders"):
+                if motors_loaded:
+                    wheel_valid = parse_yaml(
+                        os.path.join(self.path, "encoder_load.yaml")
+                    )
+                else:
+                    wheel_valid = parse_yaml(os.path.join(self.path, "encoder.yaml"))
 
-        for wheel_test in wheel_valid["tests"]:
-            self.cmd_velfl_pub.publish(Float32(data=wheel_test["velocity"]))
-            self.cmd_velfr_pub.publish(Float32(data=wheel_test["velocity"]))
-            self.cmd_velrl_pub.publish(Float32(data=wheel_test["velocity"]))
-            self.cmd_velrr_pub.publish(Float32(data=wheel_test["velocity"]))
+                errors: dict[str, str] = {}
 
-            spin_for(self.node, wheel_test["time"])
+                try:
+                    for wheel_test in wheel_valid["tests"]:
+                        self._publish_velocity(wheel_test["velocity"])
+                        spin_for(self.node, wheel_test["time"])
+                        self._collect_velocity_errors(wheel_test, errors)
+                finally:
+                    self._publish_velocity(0.0)
 
-            speed_min = wheel_test["velocity"] - wheel_test["tolerance"]
-            speed_max = wheel_test["velocity"] + wheel_test["tolerance"]
+                self._check_wheel_errors(errors)
+        except ValueError as exc:
+            self.logger.error("Encoder test failed: %s", exc)
+            return False
+        return True
 
-            for i in range(0, 4):
-                if not speed_min < self.wheel_data.velocity[i] < speed_max:
-                    is_error[i] = True
+    def _collect_velocity_errors(
+        self, wheel_test: dict, errors: dict[str, str]
+    ) -> None:
+        """
+        Record the wheels whose velocity is outside of the tolerance.
 
-        self.cmd_velfl_pub.publish(Float32(data=0.0))
-        self.cmd_velfr_pub.publish(Float32(data=0.0))
-        self.cmd_velrl_pub.publish(Float32(data=0.0))
-        self.cmd_velrr_pub.publish(Float32(data=0.0))
+        Only the first failure of a given wheel is kept, so that every faulty
+        wheel gets reported exactly once.
 
-        if any(is_error):
-            return False, ", ".join(
-                [name for name, error in zip(self.WHEEL_NAMES, is_error) if error]
-            )
+        :param wheel_test: A single entry of the encoder yaml "tests" list
+        :type wheel_test: dict
+        :param errors: Mapping of wheel name to its failure description
+        :type errors: dict[str, str]
+        """
+        speed_min = wheel_test["velocity"] - wheel_test["tolerance"]
+        speed_max = wheel_test["velocity"] + wheel_test["tolerance"]
 
-        return True, None
+        for i, name in enumerate(self.WHEEL_NAMES):
+            velocity = self.wheel_data.velocity[i]
+            if not speed_min < velocity < speed_max and name not in errors:
+                errors[name] = (
+                    f"{name} reported {velocity:.2f} rad/s at a "
+                    f"{wheel_test['velocity']:.2f} rad/s setpoint, outside of "
+                    f"{speed_min:.2f}..{speed_max:.2f} rad/s"
+                )
 
-    def test_torque(self, motors_loaded=True) -> tuple[bool, Optional[str]]:
-        is_error = [False] * 4
+    def test_torque(self, motors_loaded: bool = True) -> bool:
+        """
+        Validate the torque sensors by driving the wheels at set PWM duties.
 
-        if motors_loaded:
-            torque_valid = parse_yaml(os.path.join(self.path, "torque_load.yaml"))
-        else:
-            torque_valid = parse_yaml(os.path.join(self.path, "torque.yaml"))
+        :param motors_loaded: Whether the wheels are loaded, selecting the limits
+        :type motors_loaded: bool
+        :return: True if every wheel reported a valid torque, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Validating the torque sensors"):
+                if motors_loaded:
+                    torque_valid = parse_yaml(
+                        os.path.join(self.path, "torque_load.yaml")
+                    )
+                else:
+                    torque_valid = parse_yaml(os.path.join(self.path, "torque.yaml"))
 
-        for torque_test in torque_valid["tests"]:
-            self.cmd_pwmfl_pub.publish(Float32(data=torque_test["pwm"]))
-            self.cmd_pwmfr_pub.publish(Float32(data=torque_test["pwm"]))
-            self.cmd_pwmrl_pub.publish(Float32(data=-torque_test["pwm"]))
-            self.cmd_pwmrr_pub.publish(Float32(data=-torque_test["pwm"]))
+                errors: dict[str, str] = {}
 
-            spin_for(self.node, torque_test["time"])
+                try:
+                    for torque_test in torque_valid["tests"]:
+                        self._publish_pwm(torque_test["pwm"])
+                        spin_for(self.node, torque_test["time"])
+                        self._collect_torque_errors(torque_test, errors)
+                finally:
+                    self._publish_pwm(0.0)
 
-            for i in range(4):
-                if (
-                    not torque_test["torque_min"]
-                    <= self.wheel_data.torque[i]
-                    <= torque_test["torque_max"]
-                ):
-                    is_error[i] = True
+                self._check_wheel_errors(errors)
+        except ValueError as exc:
+            self.logger.error("Torque sensor test failed: %s", exc)
+            return False
+        return True
 
-        self.cmd_pwmfl_pub.publish(Float32(data=0.0))
-        self.cmd_pwmfr_pub.publish(Float32(data=0.0))
-        self.cmd_pwmrl_pub.publish(Float32(data=0.0))
-        self.cmd_pwmrr_pub.publish(Float32(data=0.0))
+    def _collect_torque_errors(self, torque_test: dict, errors: dict[str, str]) -> None:
+        """
+        Record the wheels whose torque is outside of the valid range.
 
-        if any(is_error):
-            return False, ", ".join(
-                [name for name, error in zip(self.WHEEL_NAMES, is_error) if error]
-            )
+        Only the first failure of a given wheel is kept, so that every faulty
+        wheel gets reported exactly once.
 
-        return True, None
+        :param torque_test: A single entry of the torque yaml "tests" list
+        :type torque_test: dict
+        :param errors: Mapping of wheel name to its failure description
+        :type errors: dict[str, str]
+        """
+        torque_min = torque_test["torque_min"]
+        torque_max = torque_test["torque_max"]
+
+        for i, name in enumerate(self.WHEEL_NAMES):
+            torque = self.wheel_data.torque[i]
+            if not torque_min <= torque <= torque_max and name not in errors:
+                errors[name] = (
+                    f"{name} reported {torque:.3f} Nm at a "
+                    f"{torque_test['pwm']:.0f}% PWM duty, outside of "
+                    f"{torque_min:.3f}..{torque_max:.3f} Nm"
+                )
+
+    def _check_wheel_errors(self, errors: dict[str, str]) -> None:
+        """
+        Raise a single error describing every faulty wheel.
+
+        Each description already starts with the name of the wheel it concerns.
+
+        :param errors: Mapping of wheel name to its failure description
+        :type errors: dict[str, str]
+        :raises ValueError: If any wheel was recorded as faulty
+        """
+        if errors:
+            msg = "; ".join(errors[name] for name in self.WHEEL_NAMES if name in errors)
+            raise ValueError(msg)
 
 
 def test_motors(
     mode: MotorTestMode = MotorTestMode.ALL,
     ros_args: Optional[list[str]] = None,
-) -> None:
-    write_flush("--> Initializing ROS node.. ")
-    rclpy.init(args=ros_args)
-    node = Node("leo_motor_tester")
-    spin_for(node, NODE_DISCOVERY_TIME)
-    print_ok("DONE")
+) -> int:
+    """
+    Run the motor tests, after asking the user to confirm.
+
+    :param mode: Which of the tests to run
+    :type mode: MotorTestMode
+    :param ros_args: Arguments forwarded to rclpy, or None to use sys.argv
+    :type ros_args: Optional[list[str]]
+    :return: 0 if every check passed, 1 otherwise
+    :rtype: int
+    """
+    _log.info("Starting motor tests.")
+
+    with log_step("Initializing ROS node"):
+        rclpy.init(args=ros_args)
+        node = Node("leo_motor_tester")
+        spin_for(node, NODE_DISCOVERY_TIME)
 
     tester: Optional[MotorTester] = None
 
@@ -244,44 +317,41 @@ def test_motors(
         board_type = check_firmware_node(node)
 
         if board_type is None:
-            return
+            return 1
 
-        #####################################################
-
-        print_warn(
+        _log.warning(
             "The motors will spin during this procedure. "
             "Make sure the robot is placed on a stand or has enough free space "
             "around it, and keep clear of the wheels."
         )
 
-        if not query_yes_no("Do you want to start the motor tests?", default="no"):
-            return
+        if not get_confirmation_prompt("Do you want to start the motor tests?"):
+            _log.info("Motor tests cancelled by the user.")
+            return 0
 
-        #####################################################
+        with log_step("Initializing the motor tester"):
+            tester = MotorTester(node)
 
-        write_flush("--> Initializing Motor Tester.. ")
-        tester = MotorTester(node)
-        print_ok("DONE")
+        with log_step("Checking if the motors are loaded"):
+            motors_loaded = tester.check_motor_load()
 
-        #####################################################
+        _log.info(f"Motors are {'loaded' if motors_loaded else 'not loaded'}.")
 
-        write_flush("--> Checking if motors are loaded.. ")
-        motors_loaded = tester.check_motor_load()
-        if motors_loaded:
-            print("YES")
-        else:
-            print("NO")
+        results: list[tuple[str, bool]] = []
 
         if mode in (MotorTestMode.ALL, MotorTestMode.ENCODER):
-            write_flush("--> Encoders validation.. ")
-            print_test_result(tester.test_encoder(motors_loaded))
+            results.append(("Wheel encoders", tester.test_encoder(motors_loaded)))
 
         if (
             mode in (MotorTestMode.ALL, MotorTestMode.TORQUE)
             and board_type == BoardType.LEOCORE
         ):
-            write_flush("--> Torque sensors validation.. ")
-            print_test_result(tester.test_torque(motors_loaded))
+            results.append(("Torque sensors", tester.test_torque(motors_loaded)))
+
+        if not results:
+            _log.warning("No test was selected to run.")
+
+        return report_results(_log, results)
 
     finally:
         if tester is not None:

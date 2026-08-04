@@ -23,7 +23,7 @@ from __future__ import annotations
 import sys
 import time
 from enum import Enum
-from typing import TypeVar, Optional
+from typing import TypeVar
 
 import rclpy
 from rclpy.node import Node
@@ -70,14 +70,6 @@ def print_warn(msg: str):
 
 def print_fail(msg: str):
     print(CSIColor.RED + msg + CSIColor.RESET)
-
-
-def print_test_result(res: tuple[bool, Optional[str]]):
-    if res[0]:
-        print_ok("PASSED")
-    else:
-        assert res[1] is not None
-        print_fail("FAILED (" + res[1] + ")")
 
 
 def query_yes_no(question: str, default: str = "yes") -> bool:

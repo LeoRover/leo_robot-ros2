@@ -25,7 +25,7 @@ def main() -> None:
 
     args, ros_args = parser.parse_known_args()
 
-    leo_fw.test_motors(mode=args.mode, ros_args=[sys.argv[0]] + ros_args)
+    sys.exit(leo_fw.test_motors(mode=args.mode, ros_args=[sys.argv[0]] + ros_args))
 
 
 if __name__ == "__main__":

@@ -28,7 +28,9 @@ from rclpy.client import Client
 
 from std_srvs.srv import Trigger
 
-from .utils import write_flush, print_ok, print_warn, print_fail
+from .console import get_logger, log_step
+
+_log = get_logger("board")
 
 
 class BoardType(Enum):
@@ -94,46 +96,40 @@ def check_firmware_node(node: rclpy.Node) -> Optional[BoardType]:
 
     Prints the board type and the firmware version it reports.
     """
-    write_flush("--> Checking if firmware node is active.. ")
+    try:
+        with log_step("Checking if firmware node is active"):
+            if (
+                "firmware",
+                node.get_namespace(),
+            ) not in node.get_node_names_and_namespaces():
+                msg = (
+                    "Firmware node is not active. "
+                    "Try to flash the firmware or restart the Micro-ROS Agent."
+                )
+                raise ValueError(msg)
 
-    if ("firmware", node.get_namespace()) in node.get_node_names_and_namespaces():
-        print_ok("YES")
-    else:
-        print_fail("NO")
-        print_warn(
-            "Firmware node is not active. "
-            "Will not be able to validate hardware. "
-            "Try to flash the firmware or restart the Micro-ROS Agent."
-        )
+        with log_step("Determining the board type"):
+            board_type = determine_board(node)
+            if board_type is None:
+                msg = (
+                    "Can not determine board type. "
+                    "Update the firmware and try to rerun the script."
+                )
+                raise ValueError(msg)
+    except ValueError as exc:
+        _log.error("Will not be able to validate hardware: %s", exc)
         return None
 
-    write_flush("--> Trying to determine board type.. ")
+    with log_step("Checking the current firmware version"):
+        current_firmware_version = check_firmware_version(node)
 
-    board_type = determine_board(node)
-
-    if board_type is not None:
-        print_ok("SUCCESS")
-    else:
-        print_fail("FAIL")
-        print_warn(
-            "Can not determine board type. "
-            "Update the firmware and try to rerun the script."
-        )
-        return None
-
-    write_flush("--> Trying to check the current firmware version.. ")
-
-    current_firmware_version = check_firmware_version(node)
-
-    if current_firmware_version != "<unknown>":
-        print_ok("SUCCESS")
-    else:
-        print_fail("FAIL")
+    if current_firmware_version == "<unknown>":
+        _log.warning("Could not read the firmware version.")
 
     if board_type == BoardType.CORE2:
-        print("Board type: Husarion CORE2")
+        _log.info("Board type: Husarion CORE2")
     elif board_type == BoardType.LEOCORE:
-        print("Board type: LeoCore")
-    print(f"Firmware version: {current_firmware_version}")
+        _log.info("Board type: LeoCore")
+    _log.info(f"Firmware version: {current_firmware_version}")
 
     return board_type
