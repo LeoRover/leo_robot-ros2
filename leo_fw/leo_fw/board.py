@@ -90,11 +90,17 @@ def check_firmware_version(node: rclpy.Node) -> str:
     return firmware_version
 
 
-def check_firmware_node(node: rclpy.Node) -> Optional[BoardType]:
+def check_firmware_node(node: rclpy.Node) -> Optional[tuple[BoardType, str]]:
     """
-    Verify that the firmware node is running and report the board it runs on.
+    Verify that the firmware node is running and report what it runs.
 
-    Prints the board type and the firmware version it reports.
+    Logs the board type and the firmware version the node reports.
+
+    :param node: Node used to query the ROS graph
+    :type node: rclpy.Node
+    :return: The board type and the reported firmware version, or None if the
+        firmware node is not usable
+    :rtype: Optional[tuple[BoardType, str]]
     """
     try:
         with log_step("Checking if firmware node is active"):
@@ -120,7 +126,7 @@ def check_firmware_node(node: rclpy.Node) -> Optional[BoardType]:
         _log.error("Will not be able to validate hardware: %s", exc)
         return None
 
-    with log_step("Checking the current firmware version"):
+    with log_step("Reading the current firmware version"):
         current_firmware_version = check_firmware_version(node)
 
     if current_firmware_version == "<unknown>":
@@ -132,4 +138,4 @@ def check_firmware_node(node: rclpy.Node) -> Optional[BoardType]:
         _log.info("Board type: LeoCore")
     _log.info(f"Firmware version: {current_firmware_version}")
 
-    return board_type
+    return board_type, current_firmware_version

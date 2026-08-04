@@ -34,6 +34,7 @@ from std_msgs.msg import Float32
 from .board import BoardType, check_firmware_node
 from .console import get_logger, log_step, report_results
 from .utils import spin_for, parse_yaml
+from .versions import get_firmware_binary_path, get_firmware_version
 
 # Time given to the ROS graph to be discovered before it gets inspected
 NODE_DISCOVERY_TIME = 3.0
@@ -49,6 +50,7 @@ _log = get_logger("test_hw")
 
 
 class TestMode(Enum):
+    FIRMWARE = "firmware"
     IMU = "imu"
     BATTERY = "battery"
     ALL = "all"
@@ -92,6 +94,38 @@ class HardwareTester:
     def imu_callback(self, data: Imu) -> None:
         self.imu_data = data
         self.is_new_imu_data = True
+
+    def test_firmware_version(self, board_type: BoardType, current_version: str) -> bool:
+        """
+        Check that the board runs the firmware version shipped in this package.
+
+        :param board_type: The board the firmware node reported
+        :type board_type: BoardType
+        :param current_version: The version the firmware node reported
+        :type current_version: str
+        :return: True if the versions match, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Checking the firmware version"):
+                if current_version == "<unknown>":
+                    msg = "The firmware node did not report its version"
+                    raise ValueError(msg)
+
+                binary_path = get_firmware_binary_path(board_type)
+                expected_version = get_firmware_version(binary_path, board_type)
+
+                if current_version != expected_version:
+                    msg = (
+                        f"The board runs firmware {current_version}, but this "
+                        f"package ships {expected_version}. "
+                        "Run the flash script to update it."
+                    )
+                    raise ValueError(msg)
+        except (OSError, ValueError) as exc:
+            self.logger.error("Firmware version test failed: %s", exc)
+            return False
+        return True
 
     def test_imu(self) -> bool:
         """
@@ -314,15 +348,28 @@ def test_hw(
         spin_for(node, NODE_DISCOVERY_TIME)
 
     try:
-        board_type = check_firmware_node(node)
+        firmware_info = check_firmware_node(node)
 
-        if board_type is None:
+        if firmware_info is None:
             return 1
+
+        board_type, firmware_version = firmware_info
 
         with log_step("Initializing the hardware tester"):
             tester = HardwareTester(node)
 
         results: list[tuple[str, bool]] = []
+
+        if hardware in (TestMode.ALL, TestMode.FIRMWARE):
+            if board_type == BoardType.LEOCORE:
+                results.append(
+                    (
+                        "Firmware version",
+                        tester.test_firmware_version(board_type, firmware_version),
+                    )
+                )
+            else:
+                _log.warning("CORE2 detected, the firmware version is not checked.")
 
         if hardware in (TestMode.ALL, TestMode.BATTERY):
             results.append(("Battery voltage", tester.test_battery()))

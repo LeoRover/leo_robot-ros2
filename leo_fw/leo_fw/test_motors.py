@@ -385,10 +385,12 @@ def test_motors(
     tester: Optional[MotorTester] = None
 
     try:
-        board_type = check_firmware_node(node)
+        firmware_info = check_firmware_node(node)
 
-        if board_type is None:
+        if firmware_info is None:
             return 1
+
+        board_type, _ = firmware_info
 
         _log.warning(
             "The motors will spin during this procedure. "
