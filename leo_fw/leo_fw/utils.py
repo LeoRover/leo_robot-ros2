@@ -20,12 +20,12 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 from enum import Enum
 from typing import TypeVar, Optional
 
 import yaml  # type: ignore
-from whichcraft import which
 
 # pylint: disable=invalid-name
 T = TypeVar("T")
@@ -47,7 +47,7 @@ def is_tool(name: str) -> bool:
     :return: True if executable exists, False otherwise
     :rtype: bool
     """
-    return which(name) is not None
+    return shutil.which(name) is not None
 
 
 def write_flush(msg: str):
