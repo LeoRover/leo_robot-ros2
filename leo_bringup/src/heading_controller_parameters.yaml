@@ -1,0 +1,36 @@
+heading_controller:
+  linear_hold_deadband:
+    type: double
+    default_value: 0.05
+    description: "Minimum absolute linear.x required to enable heading hold."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  kp:
+    type: double
+    default_value: 15.0
+    description: "Proportional gain used to convert heading error into angular correction."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  max_correction:
+    type: double
+    default_value: 1.0
+    description: "Absolute limit for angular.z correction."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  yaw_deadband:
+    type: double
+    default_value: 0.005
+    description: "Heading error tolerance that produces zero correction if the error is within this deadband."
+    read_only: false
+    validation:
+      gt<>: [0.0]
+  angular_hold_deadband:
+    type: double
+    default_value: 0.2
+    description: "Maximum absolute angular.z command still treated as heading-hold mode."
+    read_only: false
+    validation:
+      gt<>: [0.0]
