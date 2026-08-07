@@ -30,6 +30,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from leo_msgs.msg import Imu
 from std_msgs.msg import Float32
+from sensor_msgs.msg import Image
 
 from .board import BoardType, check_firmware_node
 from .console import get_logger, log_step, report_results
@@ -46,6 +47,10 @@ TOPIC_DISCOVERY_TIME = 2.0
 IMU_SAMPLES = 20
 BATTERY_SAMPLES = 20
 
+# The camera test only checks that the stream is alive, so a single frame is
+# enough
+CAMERA_SAMPLES = 1
+
 _log = get_logger("test_hw")
 
 
@@ -53,6 +58,7 @@ class TestMode(Enum):
     FIRMWARE = "firmware"
     IMU = "imu"
     BATTERY = "battery"
+    CAMERA = "camera"
     ALL = "all"
 
     def __str__(self):
@@ -72,9 +78,11 @@ class HardwareTester:
 
         self.is_new_imu_data = False
         self.is_new_battery_data = False
+        self.is_new_camera_data = False
 
         self.imu_data = Imu()
         self.battery_data = Float32()
+        self.camera_data = Image()
 
         ### Subscriptions
 
@@ -83,6 +91,9 @@ class HardwareTester:
         )
         self.imu_sub = node.create_subscription(
             Imu, "firmware/imu", self.imu_callback, qos_profile_sensor_data
+        )
+        self.camera_sub = node.create_subscription(
+            Image, "camera/image_color", self.camera_callback, qos_profile_sensor_data
         )
 
         spin_for(self.node, TOPIC_DISCOVERY_TIME)
@@ -94,6 +105,10 @@ class HardwareTester:
     def imu_callback(self, data: Imu) -> None:
         self.imu_data = data
         self.is_new_imu_data = True
+
+    def camera_callback(self, data: Image) -> None:
+        self.camera_data = data
+        self.is_new_camera_data = True
 
     def test_firmware_version(self, board_type: BoardType, current_version: str) -> bool:
         """
@@ -325,6 +340,60 @@ class HardwareTester:
         if failures:
             raise ValueError("; ".join(failures))
 
+    def test_camera(self) -> bool:
+        """
+        Check that the camera is publishing images.
+
+        Only the arrival of a frame is checked, not its content.
+
+        :return: True if a frame was received, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Checking the camera stream"):
+                camera_valid = parse_yaml(os.path.join(self.path, "camera.yaml"))[
+                    "camera"
+                ]
+
+                self._collect_camera_samples(CAMERA_SAMPLES, camera_valid["timeout"])
+        except TimeoutError as exc:
+            self.logger.error("Camera test failed: %s", exc)
+            return False
+        return True
+
+    def _collect_camera_samples(self, sample_count: int, timeout: float) -> list[Image]:
+        """
+        Collect a fixed number of fresh camera frames.
+
+        :param sample_count: Number of frames to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two frames, in seconds
+        :type timeout: float
+        :return: The collected frames
+        :rtype: list[Image]
+        :raises TimeoutError: If the frames stop arriving
+        """
+        samples: list[Image] = []
+        time_last_msg = time.monotonic()
+
+        while len(samples) < sample_count:
+            rclpy.spin_once(self.node, timeout_sec=timeout)
+
+            time_now = time.monotonic()
+            if time_last_msg + timeout < time_now:
+                msg = (
+                    f"No camera message received within {timeout:.2f} s "
+                    f"({len(samples)}/{sample_count} samples collected)"
+                )
+                raise TimeoutError(msg)
+
+            if self.is_new_camera_data:
+                time_last_msg = time_now
+                self.is_new_camera_data = False
+                samples.append(self.camera_data)
+
+        return samples
+
 
 def test_hw(
     hardware: TestMode = TestMode.ALL,
@@ -376,6 +445,9 @@ def test_hw(
 
         if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
             results.append(("IMU", tester.test_imu()))
+
+        if hardware in (TestMode.ALL, TestMode.CAMERA):
+            results.append(("Camera", tester.test_camera()))
 
         if not results:
             _log.warning("No test was selected to run.")
