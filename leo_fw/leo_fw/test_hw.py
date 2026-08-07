@@ -235,15 +235,13 @@ class HardwareTester:
         for name, get_value, expected, tolerance, unit in axes:
             values = [get_value(sample) for sample in samples]
             invalid = [
-                value
+                (abs(value - expected), value)
                 for value in values
                 if not expected - tolerance < value < expected + tolerance
             ]
 
             if invalid:
-                worst = max(
-                    invalid, key=lambda value, target=expected: abs(value - target)
-                )
+                worst = max(invalid)[1]
                 failures.append(
                     f"{name} was out of range in {len(invalid)}/{len(values)} "
                     f"samples, worst {worst:.3f} {unit} against the expected "
