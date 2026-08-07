@@ -136,6 +136,6 @@ def check_firmware_node(node: rclpy.Node) -> Optional[tuple[BoardType, str]]:
         _log.info("Board type: Husarion CORE2")
     elif board_type == BoardType.LEOCORE:
         _log.info("Board type: LeoCore")
-    _log.info(f"Firmware version: {current_firmware_version}")
+    _log.info("Firmware version: %s", current_firmware_version)
 
     return board_type, current_firmware_version

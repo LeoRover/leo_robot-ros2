@@ -110,7 +110,9 @@ class HardwareTester:
         self.camera_data = data
         self.is_new_camera_data = True
 
-    def test_firmware_version(self, board_type: BoardType, current_version: str) -> bool:
+    def test_firmware_version(
+        self, board_type: BoardType, current_version: str
+    ) -> bool:
         """
         Check that the board runs the firmware version shipped in this package.
 
@@ -153,9 +155,7 @@ class HardwareTester:
             with log_step("Validating IMU data"):
                 imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))["imu"]
 
-                samples = self._collect_imu_samples(
-                    IMU_SAMPLES, imu_valid["timeout"]
-                )
+                samples = self._collect_imu_samples(IMU_SAMPLES, imu_valid["timeout"])
                 self._validate_imu_samples(samples, imu_valid)
         except (TimeoutError, ValueError) as exc:
             self.logger.error(
@@ -241,7 +241,9 @@ class HardwareTester:
             ]
 
             if invalid:
-                worst = max(invalid, key=lambda value: abs(value - expected))
+                worst = max(
+                    invalid, key=lambda value, target=expected: abs(value - target)
+                )
                 failures.append(
                     f"{name} was out of range in {len(invalid)}/{len(values)} "
                     f"samples, worst {worst:.3f} {unit} against the expected "

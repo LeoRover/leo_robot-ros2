@@ -260,9 +260,7 @@ class MotorTester:
                 continue
 
             values = [sample.velocity[i] for sample in samples]
-            invalid = [
-                value for value in values if not speed_min < value < speed_max
-            ]
+            invalid = [value for value in values if not speed_min < value < speed_max]
 
             if invalid:
                 worst = max(invalid, key=lambda value: abs(value - setpoint))
@@ -408,7 +406,7 @@ def test_motors(
         with log_step("Checking if the motors are loaded"):
             motors_loaded = tester.check_motor_load()
 
-        _log.info(f"Motors are {'loaded' if motors_loaded else 'not loaded'}.")
+        _log.info("Motors are %s.", "loaded" if motors_loaded else "not loaded")
 
         results: list[tuple[str, bool]] = []
 

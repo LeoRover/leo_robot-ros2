@@ -103,12 +103,12 @@ def log_step(
     except Exception:
         live.stop()
         elapsed_ms = (time.perf_counter() - start) * 1000
-        _log.info(f"{label}... [red]{failure_text}[/red] ({elapsed_ms:.0f} ms)")
+        _log.info("%s... [red]%s[/red] (%.0f ms)", label, failure_text, elapsed_ms)
         raise
-    else:
-        live.stop()
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        _log.info(f"{label}... [green]{success_text}[/green] ({elapsed_ms:.0f} ms)")
+
+    live.stop()
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    _log.info("%s... [green]%s[/green] (%.0f ms)", label, success_text, elapsed_ms)
 
 
 def get_confirmation_prompt(prompt: str, default: bool = False) -> bool:
@@ -142,9 +142,9 @@ def report_results(logger: logging.Logger, results: list[tuple[str, bool]]) -> i
 
     if failed:
         logger.error(
-            f"Finished with {len(failed)} failing check(s): {'; '.join(failed)}."
+            "Finished with %d failing check(s): %s.", len(failed), "; ".join(failed)
         )
         return 1
 
-    logger.info(f"Finished successfully. {len(results)} check(s) passed.")
+    logger.info("Finished successfully. %d check(s) passed.", len(results))
     return 0
