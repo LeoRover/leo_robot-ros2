@@ -417,12 +417,16 @@ def test_hw(
         spin_for(node, NODE_DISCOVERY_TIME)
 
     try:
-        firmware_info = check_firmware_node(node)
+        board_type: Optional[BoardType] = None
+        firmware_version: Optional[str] = None
 
-        if firmware_info is None:
-            return 1
+        if hardware in (TestMode.ALL, TestMode.FIRMWARE, TestMode.IMU):
+            firmware_info = check_firmware_node(node)
 
-        board_type, firmware_version = firmware_info
+            if firmware_info is None:
+                return 1
+
+            board_type, firmware_version = firmware_info
 
         with log_step("Initializing the hardware tester"):
             tester = HardwareTester(node)

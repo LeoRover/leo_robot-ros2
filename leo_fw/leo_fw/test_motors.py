@@ -393,12 +393,15 @@ def test_motors(
     tester: Optional[MotorTester] = None
 
     try:
-        firmware_info = check_firmware_node(node)
+        board_type: Optional[BoardType] = None
 
-        if firmware_info is None:
-            return 1
+        if mode in (MotorTestMode.ALL, MotorTestMode.TORQUE):
+            firmware_info = check_firmware_node(node)
 
-        board_type, _ = firmware_info
+            if firmware_info is None:
+                return 1
+
+            board_type, _ = firmware_info
 
         _log.warning(
             "The motors will spin during this procedure. "
