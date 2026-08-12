@@ -260,14 +260,20 @@ class MotorTester:
                 continue
 
             values = [sample.velocity[i] for sample in samples]
-            invalid = [value for value in values if not speed_min < value < speed_max]
+            invalid = [
+                (index, value)
+                for index, value in enumerate(values)
+                if not speed_min <= value <= speed_max
+            ]
 
             if invalid:
-                worst = max(invalid, key=lambda value: abs(value - setpoint))
+                _, worst = max(invalid, key=lambda item: abs(item[1] - setpoint))
+                indices = ", ".join(str(index) for index, _ in invalid)
                 errors[name] = (
                     f"{name} was out of range in {len(invalid)}/{len(values)} "
-                    f"samples at a {setpoint:.2f} rad/s setpoint, worst "
-                    f"{worst:.2f} rad/s against {speed_min:.2f}..{speed_max:.2f} rad/s"
+                    f"samples at a {setpoint:.2f} rad/s setpoint "
+                    f"(samples {indices}), worst {worst:.2f} rad/s against "
+                    f"{speed_min:.2f}..{speed_max:.2f} rad/s"
                 )
 
     def test_torque(self, motors_loaded: bool = True) -> bool:
@@ -333,15 +339,19 @@ class MotorTester:
 
             values = [sample.torque[i] for sample in samples]
             invalid = [
-                value for value in values if not torque_min <= value <= torque_max
+                (index, value)
+                for index, value in enumerate(values)
+                if not torque_min <= value <= torque_max
             ]
 
             if invalid:
-                worst = max(invalid, key=lambda value: abs(value - midpoint))
+                _, worst = max(invalid, key=lambda item: abs(item[1] - midpoint))
+                indices = ", ".join(str(index) for index, _ in invalid)
                 errors[name] = (
                     f"{name} was out of range in {len(invalid)}/{len(values)} "
-                    f"samples at a {torque_test['pwm']:.0f}% PWM duty, worst "
-                    f"{worst:.3f} Nm against {torque_min:.3f}..{torque_max:.3f} Nm"
+                    f"samples at a {torque_test['pwm']:.0f}% PWM duty "
+                    f"(samples {indices}), worst {worst:.3f} Nm against "
+                    f"{torque_min:.3f}..{torque_max:.3f} Nm"
                 )
 
     def _check_wheel_errors(self, errors: dict[str, str]) -> None:
