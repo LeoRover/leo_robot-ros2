@@ -19,8 +19,11 @@ def main() -> None:
         dest="hardware",
         type=TestMode,
         choices=list(TestMode),
-        default="all",
-        help="select test mode",
+        nargs="+",
+        default=[TestMode.ALL],
+        metavar="TEST",
+        help="select the tests to run, space separated: "
+        + ", ".join(str(mode) for mode in TestMode),
     )
 
     args, ros_args = parser.parse_known_args()

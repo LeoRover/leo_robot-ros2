@@ -20,7 +20,7 @@
 
 import os
 import time
-from collections.abc import Generator
+from collections.abc import Collection, Generator
 from contextlib import contextmanager
 from enum import Enum
 from typing import Optional, TypeVar
@@ -80,11 +80,29 @@ class TestMode(Enum):
         return self.value
 
 
+# What TestMode.ALL stands for: every mode that names an actual test
+ALL_TESTS = frozenset(TestMode) - {TestMode.ALL}
+
 # The tests that need the firmware node to report its board and version
-FIRMWARE_INFO_MODES = (TestMode.ALL, TestMode.FIRMWARE, TestMode.IMU, TestMode.TORQUE)
+FIRMWARE_INFO_TESTS = frozenset({TestMode.FIRMWARE, TestMode.IMU, TestMode.TORQUE})
 
 # The tests that spin the wheels, and therefore have to be confirmed first
-MOTOR_TEST_MODES = (TestMode.ALL, TestMode.ENCODER, TestMode.TORQUE)
+MOTOR_TESTS = frozenset({TestMode.ENCODER, TestMode.TORQUE})
+
+
+def _resolve_tests(hardware: Collection[TestMode]) -> frozenset[TestMode]:
+    """
+    Expand the selected modes into the set of tests to run.
+
+    :param hardware: The modes that were selected, in any order
+    :type hardware: Collection[TestMode]
+    :return: Every test the selection stands for, with ALL expanded
+    :rtype: frozenset[TestMode]
+    """
+    if TestMode.ALL in hardware:
+        return ALL_TESTS
+
+    return frozenset(hardware)
 
 
 class HardwareTester:
@@ -662,7 +680,7 @@ class HardwareTester:
 
 def _run_sensor_tests(
     tester: HardwareTester,
-    hardware: TestMode,
+    tests: frozenset[TestMode],
     board_type: Optional[BoardType],
     firmware_version: str,
 ) -> list[tuple[str, bool]]:
@@ -671,8 +689,8 @@ def _run_sensor_tests(
 
     :param tester: The tester to run the tests on
     :type tester: HardwareTester
-    :param hardware: Which of the tests to run
-    :type hardware: TestMode
+    :param tests: The tests to run, as resolved by _resolve_tests
+    :type tests: frozenset[TestMode]
     :param board_type: The board the firmware node reported, if it was checked
     :type board_type: Optional[BoardType]
     :param firmware_version: The version the firmware node reported
@@ -682,7 +700,7 @@ def _run_sensor_tests(
     """
     results: list[tuple[str, bool]] = []
 
-    if hardware in (TestMode.ALL, TestMode.FIRMWARE):
+    if TestMode.FIRMWARE in tests:
         if board_type == BoardType.LEOCORE:
             results.append(
                 (
@@ -693,13 +711,13 @@ def _run_sensor_tests(
         else:
             _log.warning("CORE2 detected, the firmware version is not checked.")
 
-    if hardware in (TestMode.ALL, TestMode.BATTERY):
+    if TestMode.BATTERY in tests:
         results.append(("Battery voltage", tester.test_battery()))
 
-    if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
+    if TestMode.IMU in tests and board_type == BoardType.LEOCORE:
         results.append(("IMU", tester.test_imu()))
 
-    if hardware in (TestMode.ALL, TestMode.CAMERA):
+    if TestMode.CAMERA in tests:
         results.append(("Camera", tester.test_camera()))
 
     return results
@@ -707,7 +725,7 @@ def _run_sensor_tests(
 
 def _run_motor_tests(
     tester: HardwareTester,
-    hardware: TestMode,
+    tests: frozenset[TestMode],
     board_type: Optional[BoardType],
 ) -> list[tuple[str, bool]]:
     """
@@ -715,8 +733,8 @@ def _run_motor_tests(
 
     :param tester: The tester to run the tests on
     :type tester: HardwareTester
-    :param hardware: Which of the tests to run
-    :type hardware: TestMode
+    :param tests: The tests to run, as resolved by _resolve_tests
+    :type tests: frozenset[TestMode]
     :param board_type: The board the firmware node reported, if it was checked
     :type board_type: Optional[BoardType]
     :return: The name and outcome of every test that ran
@@ -732,30 +750,35 @@ def _run_motor_tests(
 
     _log.info("Motors are %s.", "loaded" if motors_loaded else "not loaded")
 
-    if hardware in (TestMode.ALL, TestMode.ENCODER):
+    if TestMode.ENCODER in tests:
         results.append(("Wheel encoders", tester.test_encoder(motors_loaded)))
 
-    if hardware in (TestMode.ALL, TestMode.TORQUE) and board_type == BoardType.LEOCORE:
+    if TestMode.TORQUE in tests and board_type == BoardType.LEOCORE:
         results.append(("Torque sensors", tester.test_torque(motors_loaded)))
 
     return results
 
 
 def test_hw(
-    hardware: TestMode = TestMode.ALL,
+    hardware: Collection[TestMode] = (TestMode.ALL,),
     ros_args: Optional[list[str]] = None,
 ) -> int:
     """
     Run the hardware tests.
 
-    :param hardware: Which of the tests to run
-    :type hardware: TestMode
+    The tests always run in a fixed order regardless of how they were selected,
+    with the ones that spin the wheels left for last.
+
+    :param hardware: Which of the tests to run, in any order
+    :type hardware: Collection[TestMode]
     :param ros_args: Arguments forwarded to rclpy, or None to use sys.argv
     :type ros_args: Optional[list[str]]
     :return: 0 if every check passed, 1 otherwise
     :rtype: int
     """
     _log.info("Starting hardware tests.")
+
+    tests = _resolve_tests(hardware)
 
     with log_step("Initializing ROS node"):
         rclpy.init(args=ros_args)
@@ -771,7 +794,7 @@ def test_hw(
         # and which test_firmware_version already rejects
         firmware_version = "<unknown>"
 
-        if hardware in FIRMWARE_INFO_MODES:
+        if tests & FIRMWARE_INFO_TESTS:
             firmware_info = check_firmware_node(node)
 
             if firmware_info is None:
@@ -779,9 +802,9 @@ def test_hw(
 
             board_type, firmware_version = firmware_info
 
-        results = _run_sensor_tests(tester, hardware, board_type, firmware_version)
+        results = _run_sensor_tests(tester, tests, board_type, firmware_version)
 
-        if hardware in MOTOR_TEST_MODES:
+        if tests & MOTOR_TESTS:
             _log.warning(
                 "The motors will spin during this procedure. "
                 "Make sure the robot is placed on a stand or has enough free space "
@@ -789,7 +812,7 @@ def test_hw(
             )
 
             if get_confirmation_prompt("Do you want to start the motor tests?"):
-                results += _run_motor_tests(tester, hardware, board_type)
+                results += _run_motor_tests(tester, tests, board_type)
             else:
                 _log.info("Motor tests cancelled by the user.")
 
