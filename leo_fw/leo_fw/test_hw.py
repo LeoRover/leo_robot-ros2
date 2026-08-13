@@ -169,8 +169,7 @@ class HardwareTester:
         timeout: float,
     ) -> list[MsgT]:
         """
-        Spin until a fixed number of fresh messages arrive on an open
-        subscription.
+        Wait for a fixed number of fresh messages on an open subscription.
 
         Whatever arrived before the call is discarded, so that the returned
         batch only describes the state the robot is in now.
@@ -216,8 +215,7 @@ class HardwareTester:
         timeout: float,
     ) -> list[MsgT]:
         """
-        Subscribe to a topic, collect a fixed number of fresh messages, and
-        unsubscribe.
+        Subscribe, collect a fixed number of fresh messages, then unsubscribe.
 
         :param msg_type: Type of the messages to collect
         :type msg_type: type[MsgT]
@@ -430,9 +428,7 @@ class HardwareTester:
         return True
 
     def create_motor_publishers(self) -> None:
-        """
-        Create the wheel command publishers and let the firmware match them.
-        """
+        """Create the wheel command publishers and let the firmware match them."""
         for name in self.WHEEL_NAMES:
             self.cmd_pwm_pubs[name] = self.node.create_publisher(
                 Float32, f"firmware/wheel_{name}/cmd_pwm_duty", 1
@@ -454,9 +450,7 @@ class HardwareTester:
             self.cmd_pwm_pubs[name].publish(Float32(data=sign * pwm))
 
     def stop_motors(self) -> None:
-        """
-        Command every wheel to stop.
-        """
+        """Command every wheel to stop."""
         if not self.cmd_vel_pubs:
             return
 
