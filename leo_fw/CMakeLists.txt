@@ -42,7 +42,6 @@ install(
     scripts/flash
     scripts/update
     scripts/test_hw
-    scripts/test_motors
     scripts/firmware_parameter_bridge
   DESTINATION lib/${PROJECT_NAME}
 )

@@ -20,36 +20,47 @@
 
 import os
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
 from enum import Enum
 from typing import Optional, TypeVar
 
 import rclpy
 from rclpy.node import Node
+from rclpy.publisher import Publisher
 from rclpy.qos import qos_profile_sensor_data
 from ament_index_python.packages import get_package_share_directory
 
-from leo_msgs.msg import Imu
+from leo_msgs.msg import Imu, WheelStates
 from std_msgs.msg import Float32
 from sensor_msgs.msg import Image
 
 from .board import BoardType, check_firmware_node
-from .console import get_logger, log_step, report_results
+from .console import (
+    get_confirmation_prompt,
+    get_logger,
+    log_step,
+    report_results,
+)
 from .utils import spin_for, parse_yaml
 from .versions import get_firmware_binary_path, get_firmware_version
 
-# Time given to the ROS graph to be discovered before it gets inspected
 NODE_DISCOVERY_TIME = 3.0
-
-# Time given to the subscriptions to match with the firmware publishers
 TOPIC_DISCOVERY_TIME = 2.0
+MOTOR_STOP_TIME = 0.2
+PWM_RAMP_STEP_TIME = 0.2
 
-# Number of messages each sensor test has to validate
+# Number of messages each test has to validate
 IMU_SAMPLES = 20
 BATTERY_SAMPLES = 20
-
-# The camera test only checks that the stream is alive, so a single frame is
-# enough
 CAMERA_SAMPLES = 1
+WHEEL_SAMPLES = 10
+
+# Longest accepted gap between two wheel state messages, in seconds
+WHEEL_SAMPLE_TIMEOUT = 0.5
+
+# Subscribed to by three of the tests, so it is worth naming once
+WHEEL_STATES_TOPIC = "firmware/wheel_states"
 
 _log = get_logger("test_hw")
 
@@ -61,14 +72,28 @@ class TestMode(Enum):
     IMU = "imu"
     BATTERY = "battery"
     CAMERA = "camera"
+    ENCODER = "encoder"
+    TORQUE = "torque"
     ALL = "all"
 
     def __str__(self):
         return self.value
 
 
+# The tests that need the firmware node to report its board and version
+FIRMWARE_INFO_MODES = (TestMode.ALL, TestMode.FIRMWARE, TestMode.IMU, TestMode.TORQUE)
+
+# The tests that spin the wheels, and therefore have to be confirmed first
+MOTOR_TEST_MODES = (TestMode.ALL, TestMode.ENCODER, TestMode.TORQUE)
+
+
 class HardwareTester:
-    """Validates the sensors that do not require the robot to move."""
+    """Validates the sensors, and the motors when they are allowed to spin."""
+
+    WHEEL_NAMES = ["FL", "RL", "FR", "RR"]
+
+    # PWM duty signs, in WHEEL_NAMES order, that make the robot spin in place
+    PWM_SPIN_SIGNS = [1.0, -1.0, 1.0, -1.0]
 
     def __init__(self, node: Node):
         self.path = os.path.join(
@@ -78,31 +103,29 @@ class HardwareTester:
         self.logger = get_logger("HardwareTester")
         self.node = node
 
-    def _collect_samples(
-        self,
-        msg_type: type[MsgT],
-        topic: str,
-        sample_count: int,
-        timeout: float,
-    ) -> list[MsgT]:
+        self.cmd_pwm_pubs: dict[str, Publisher] = {}
+        self.cmd_vel_pubs: dict[str, Publisher] = {}
+
+    @contextmanager
+    def _subscription(
+        self, msg_type: type[MsgT], topic: str
+    ) -> Generator[list[MsgT], None, None]:
         """
-        Subscribe to a topic, collect a fixed number of fresh messages, and
-        unsubscribe.
+        Subscribe to a topic for the duration of the block, then unsubscribe.
 
-        The subscription only exists for the duration of the call, so a test
-        never receives data from a topic it does not validate.
+        The subscription never outlives the test that needs it, so a test is
+        never handed data from a topic it does not validate.
 
-        :param msg_type: Type of the messages to collect
+        The yielded list is the one the callback appends to, so it keeps growing
+        while the block spins the node. Use :meth:`_wait_for_samples` to take a
+        batch of fresh messages out of it.
+
+        :param msg_type: Type of the messages to receive
         :type msg_type: type[MsgT]
         :param topic: Topic to subscribe to
         :type topic: str
-        :param sample_count: Number of messages to collect
-        :type sample_count: int
-        :param timeout: Longest accepted gap between two messages, in seconds
-        :type timeout: float
-        :return: The collected messages
-        :rtype: list[MsgT]
-        :raises TimeoutError: If the messages stop arriving
+        :return: The list the received messages get appended to
+        :rtype: Generator[list[MsgT], None, None]
         """
         samples: list[MsgT] = []
 
@@ -116,26 +139,82 @@ class HardwareTester:
             spin_for(self.node, TOPIC_DISCOVERY_TIME)
             samples.clear()
 
-            collected = 0
-            time_last_msg = time.monotonic()
-
-            while len(samples) < sample_count:
-                rclpy.spin_once(self.node, timeout_sec=timeout)
-
-                time_now = time.monotonic()
-                if len(samples) > collected:
-                    collected = len(samples)
-                    time_last_msg = time_now
-                elif time_last_msg + timeout < time_now:
-                    msg = (
-                        f"No message received on {topic} within {timeout:.2f} s "
-                        f"({collected}/{sample_count} samples collected)"
-                    )
-                    raise TimeoutError(msg)
-
-            return samples[:sample_count]
+            yield samples
         finally:
             self.node.destroy_subscription(subscription)
+
+    def _wait_for_samples(
+        self,
+        samples: list[MsgT],
+        topic: str,
+        sample_count: int,
+        timeout: float,
+    ) -> list[MsgT]:
+        """
+        Spin until a fixed number of fresh messages arrive on an open
+        subscription.
+
+        Whatever arrived before the call is discarded, so that the returned
+        batch only describes the state the robot is in now.
+
+        :param samples: The list yielded by :meth:`_subscription`
+        :type samples: list[MsgT]
+        :param topic: Topic the messages arrive on, used in the error message
+        :type topic: str
+        :param sample_count: Number of messages to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two messages, in seconds
+        :type timeout: float
+        :return: The collected messages
+        :rtype: list[MsgT]
+        :raises TimeoutError: If the messages stop arriving
+        """
+        samples.clear()
+
+        collected = 0
+        time_last_msg = time.monotonic()
+
+        while len(samples) < sample_count:
+            rclpy.spin_once(self.node, timeout_sec=timeout)
+
+            time_now = time.monotonic()
+            if len(samples) > collected:
+                collected = len(samples)
+                time_last_msg = time_now
+            elif time_last_msg + timeout < time_now:
+                msg = (
+                    f"No message received on {topic} within {timeout:.2f} s "
+                    f"({collected}/{sample_count} samples collected)"
+                )
+                raise TimeoutError(msg)
+
+        return samples[:sample_count]
+
+    def _collect_samples(
+        self,
+        msg_type: type[MsgT],
+        topic: str,
+        sample_count: int,
+        timeout: float,
+    ) -> list[MsgT]:
+        """
+        Subscribe to a topic, collect a fixed number of fresh messages, and
+        unsubscribe.
+
+        :param msg_type: Type of the messages to collect
+        :type msg_type: type[MsgT]
+        :param topic: Topic to subscribe to
+        :type topic: str
+        :param sample_count: Number of messages to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two messages, in seconds
+        :type timeout: float
+        :return: The collected messages
+        :rtype: list[MsgT]
+        :raises TimeoutError: If the messages stop arriving
+        """
+        with self._subscription(msg_type, topic) as samples:
+            return self._wait_for_samples(samples, topic, sample_count, timeout)
 
     def test_firmware_version(
         self, board_type: BoardType, current_version: str
@@ -332,13 +411,342 @@ class HardwareTester:
             return False
         return True
 
+    def create_motor_publishers(self) -> None:
+        """
+        Create the wheel command publishers and let the firmware match them.
+        """
+        for name in self.WHEEL_NAMES:
+            self.cmd_pwm_pubs[name] = self.node.create_publisher(
+                Float32, f"firmware/wheel_{name}/cmd_pwm_duty", 1
+            )
+            self.cmd_vel_pubs[name] = self.node.create_publisher(
+                Float32, f"firmware/wheel_{name}/cmd_velocity", 1
+            )
+
+        spin_for(self.node, TOPIC_DISCOVERY_TIME)
+
+    def _publish_velocity(self, velocity: float) -> None:
+        """Command the same velocity on every wheel, driving the robot forward."""
+        for publisher in self.cmd_vel_pubs.values():
+            publisher.publish(Float32(data=velocity))
+
+    def _publish_pwm(self, pwm: float) -> None:
+        """Command the given PWM duty, with the sides opposed so the robot spins."""
+        for name, sign in zip(self.WHEEL_NAMES, self.PWM_SPIN_SIGNS):
+            self.cmd_pwm_pubs[name].publish(Float32(data=sign * pwm))
+
+    def stop_motors(self) -> None:
+        """
+        Command every wheel to stop.
+        """
+        if not self.cmd_vel_pubs:
+            return
+
+        self._publish_velocity(0.0)
+        self._publish_pwm(0.0)
+
+        spin_for(self.node, MOTOR_STOP_TIME)
+
+    def check_motor_load(self) -> bool:
+        """
+        Ramp up the PWM duty until the wheels either spin freely or stall.
+
+        :return: True if the wheels are loaded, False if they spin freely
+        :rtype: bool
+        """
+        speed_limit = 1.0
+        motors_loaded = True
+
+        with self._subscription(WheelStates, WHEEL_STATES_TOPIC) as samples:
+            try:
+                for pwm in range(30):
+                    self._publish_pwm(float(pwm))
+
+                    spin_for(self.node, PWM_RAMP_STEP_TIME)
+
+                    if not samples:
+                        continue
+
+                    velocity = samples[-1].velocity
+                    samples.clear()
+
+                    # Every wheel turns in the direction it was commanded, and
+                    # faster than it could under load
+                    if all(
+                        sign * velocity[i] > speed_limit
+                        for i, sign in enumerate(self.PWM_SPIN_SIGNS)
+                    ):
+                        motors_loaded = False
+                        break
+            finally:
+                self._publish_pwm(0.0)
+
+        return motors_loaded
+
+    def test_encoder(self, motors_loaded: bool = True) -> bool:
+        """
+        Validate the wheel encoders by driving the wheels at set velocities.
+
+        :param motors_loaded: Whether the wheels are loaded, selecting the limits
+        :type motors_loaded: bool
+        :return: True if every wheel reported a valid velocity, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Validating the wheel encoders"):
+                if motors_loaded:
+                    wheel_valid = parse_yaml(
+                        os.path.join(self.path, "encoder_load.yaml")
+                    )
+                else:
+                    wheel_valid = parse_yaml(os.path.join(self.path, "encoder.yaml"))
+
+                errors: dict[str, str] = {}
+
+                with self._subscription(WheelStates, WHEEL_STATES_TOPIC) as samples:
+                    try:
+                        for wheel_test in wheel_valid["tests"]:
+                            self._publish_velocity(wheel_test["velocity"])
+                            spin_for(self.node, wheel_test["time"])
+                            self._collect_velocity_errors(
+                                wheel_test,
+                                self._wait_for_samples(
+                                    samples,
+                                    WHEEL_STATES_TOPIC,
+                                    WHEEL_SAMPLES,
+                                    WHEEL_SAMPLE_TIMEOUT,
+                                ),
+                                errors,
+                            )
+                    finally:
+                        self._publish_velocity(0.0)
+
+                self._check_wheel_errors(errors)
+        except (TimeoutError, ValueError) as exc:
+            self.logger.error("Encoder test failed: %s", exc)
+            return False
+        return True
+
+    def _collect_velocity_errors(
+        self, wheel_test: dict, samples: list[WheelStates], errors: dict[str, str]
+    ) -> None:
+        """
+        Record the wheels whose velocity is outside of the tolerance.
+
+        :param wheel_test: A single entry of the encoder yaml "tests" list
+        :type wheel_test: dict
+        :param samples: Wheel states collected at the end of the step
+        :type samples: list[WheelStates]
+        :param errors: Mapping of wheel name to its failure description
+        :type errors: dict[str, str]
+        """
+        setpoint = wheel_test["velocity"]
+        speed_min = setpoint - wheel_test["tolerance"]
+        speed_max = setpoint + wheel_test["tolerance"]
+
+        for i, name in enumerate(self.WHEEL_NAMES):
+            if name in errors:
+                continue
+
+            values = [sample.velocity[i] for sample in samples]
+            invalid = [
+                (index, value)
+                for index, value in enumerate(values)
+                if not speed_min <= value <= speed_max
+            ]
+
+            if invalid:
+                _, worst = max(invalid, key=lambda item: abs(item[1] - setpoint))
+                indices = ", ".join(str(index) for index, _ in invalid)
+                errors[name] = (
+                    f"{name} was out of range in {len(invalid)}/{len(values)} "
+                    f"samples at a {setpoint:.2f} rad/s setpoint "
+                    f"(samples {indices}), worst {worst:.2f} rad/s against "
+                    f"{speed_min:.2f}..{speed_max:.2f} rad/s"
+                )
+
+    def test_torque(self, motors_loaded: bool = True) -> bool:
+        """
+        Validate the torque sensors by driving the wheels at set PWM duties.
+
+        :param motors_loaded: Whether the wheels are loaded, selecting the limits
+        :type motors_loaded: bool
+        :return: True if every wheel reported a valid torque, False otherwise
+        :rtype: bool
+        """
+        try:
+            with log_step("Validating the torque sensors"):
+                if motors_loaded:
+                    torque_valid = parse_yaml(
+                        os.path.join(self.path, "torque_load.yaml")
+                    )
+                else:
+                    torque_valid = parse_yaml(os.path.join(self.path, "torque.yaml"))
+
+                errors: dict[str, str] = {}
+
+                with self._subscription(WheelStates, WHEEL_STATES_TOPIC) as samples:
+                    try:
+                        for torque_test in torque_valid["tests"]:
+                            self._publish_pwm(torque_test["pwm"])
+                            spin_for(self.node, torque_test["time"])
+                            self._collect_torque_errors(
+                                torque_test,
+                                self._wait_for_samples(
+                                    samples,
+                                    WHEEL_STATES_TOPIC,
+                                    WHEEL_SAMPLES,
+                                    WHEEL_SAMPLE_TIMEOUT,
+                                ),
+                                errors,
+                            )
+                    finally:
+                        self._publish_pwm(0.0)
+
+                self._check_wheel_errors(errors)
+        except (TimeoutError, ValueError) as exc:
+            self.logger.error("Torque sensor test failed: %s", exc)
+            return False
+        return True
+
+    def _collect_torque_errors(
+        self, torque_test: dict, samples: list[WheelStates], errors: dict[str, str]
+    ) -> None:
+        """
+        Record the wheels whose torque is outside of the valid range.
+
+        :param torque_test: A single entry of the torque yaml "tests" list
+        :type torque_test: dict
+        :param samples: Wheel states collected at the end of the step
+        :type samples: list[WheelStates]
+        :param errors: Mapping of wheel name to its failure description
+        :type errors: dict[str, str]
+        """
+        torque_min = torque_test["torque_min"]
+        torque_max = torque_test["torque_max"]
+        midpoint = (torque_min + torque_max) / 2.0
+
+        for i, name in enumerate(self.WHEEL_NAMES):
+            if name in errors:
+                continue
+
+            values = [sample.torque[i] for sample in samples]
+            invalid = [
+                (index, value)
+                for index, value in enumerate(values)
+                if not torque_min <= value <= torque_max
+            ]
+
+            if invalid:
+                _, worst = max(invalid, key=lambda item: abs(item[1] - midpoint))
+                indices = ", ".join(str(index) for index, _ in invalid)
+                errors[name] = (
+                    f"{name} was out of range in {len(invalid)}/{len(values)} "
+                    f"samples at a {torque_test['pwm']:.0f}% PWM duty "
+                    f"(samples {indices}), worst {worst:.3f} Nm against "
+                    f"{torque_min:.3f}..{torque_max:.3f} Nm"
+                )
+
+    def _check_wheel_errors(self, errors: dict[str, str]) -> None:
+        """
+        Raise a single error describing every faulty wheel.
+
+        :param errors: Mapping of wheel name to its failure description
+        :type errors: dict[str, str]
+        :raises ValueError: If any wheel was recorded as faulty
+        """
+        if errors:
+            msg = "; ".join(errors[name] for name in self.WHEEL_NAMES if name in errors)
+            raise ValueError(msg)
+
+
+def _run_sensor_tests(
+    tester: HardwareTester,
+    hardware: TestMode,
+    board_type: Optional[BoardType],
+    firmware_version: str,
+) -> list[tuple[str, bool]]:
+    """
+    Run the selected tests that leave the robot stationary.
+
+    :param tester: The tester to run the tests on
+    :type tester: HardwareTester
+    :param hardware: Which of the tests to run
+    :type hardware: TestMode
+    :param board_type: The board the firmware node reported, if it was checked
+    :type board_type: Optional[BoardType]
+    :param firmware_version: The version the firmware node reported
+    :type firmware_version: str
+    :return: The name and outcome of every test that ran
+    :rtype: list[tuple[str, bool]]
+    """
+    results: list[tuple[str, bool]] = []
+
+    if hardware in (TestMode.ALL, TestMode.FIRMWARE):
+        if board_type == BoardType.LEOCORE:
+            results.append(
+                (
+                    "Firmware version",
+                    tester.test_firmware_version(board_type, firmware_version),
+                )
+            )
+        else:
+            _log.warning("CORE2 detected, the firmware version is not checked.")
+
+    if hardware in (TestMode.ALL, TestMode.BATTERY):
+        results.append(("Battery voltage", tester.test_battery()))
+
+    if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
+        results.append(("IMU", tester.test_imu()))
+
+    if hardware in (TestMode.ALL, TestMode.CAMERA):
+        results.append(("Camera", tester.test_camera()))
+
+    return results
+
+
+def _run_motor_tests(
+    tester: HardwareTester,
+    hardware: TestMode,
+    board_type: Optional[BoardType],
+) -> list[tuple[str, bool]]:
+    """
+    Prepare the motors and run the selected tests that spin the wheels.
+
+    :param tester: The tester to run the tests on
+    :type tester: HardwareTester
+    :param hardware: Which of the tests to run
+    :type hardware: TestMode
+    :param board_type: The board the firmware node reported, if it was checked
+    :type board_type: Optional[BoardType]
+    :return: The name and outcome of every test that ran
+    :rtype: list[tuple[str, bool]]
+    """
+    results: list[tuple[str, bool]] = []
+
+    with log_step("Preparing the motors"):
+        tester.create_motor_publishers()
+
+    with log_step("Checking if the motors are loaded"):
+        motors_loaded = tester.check_motor_load()
+
+    _log.info("Motors are %s.", "loaded" if motors_loaded else "not loaded")
+
+    if hardware in (TestMode.ALL, TestMode.ENCODER):
+        results.append(("Wheel encoders", tester.test_encoder(motors_loaded)))
+
+    if hardware in (TestMode.ALL, TestMode.TORQUE) and board_type == BoardType.LEOCORE:
+        results.append(("Torque sensors", tester.test_torque(motors_loaded)))
+
+    return results
+
 
 def test_hw(
     hardware: TestMode = TestMode.ALL,
     ros_args: Optional[list[str]] = None,
 ) -> int:
     """
-    Run the hardware tests that do not require the robot to move.
+    Run the hardware tests.
 
     :param hardware: Which of the tests to run
     :type hardware: TestMode
@@ -354,11 +762,16 @@ def test_hw(
         node = Node("leo_hardware_tester")
         spin_for(node, NODE_DISCOVERY_TIME)
 
+    tester = HardwareTester(node)
+
     try:
         board_type: Optional[BoardType] = None
-        firmware_version: Optional[str] = None
 
-        if hardware in (TestMode.ALL, TestMode.FIRMWARE, TestMode.IMU):
+        # The sentinel the firmware node itself reports when it does not know,
+        # and which test_firmware_version already rejects
+        firmware_version = "<unknown>"
+
+        if hardware in FIRMWARE_INFO_MODES:
             firmware_info = check_firmware_node(node)
 
             if firmware_info is None:
@@ -366,29 +779,19 @@ def test_hw(
 
             board_type, firmware_version = firmware_info
 
-        tester = HardwareTester(node)
+        results = _run_sensor_tests(tester, hardware, board_type, firmware_version)
 
-        results: list[tuple[str, bool]] = []
+        if hardware in MOTOR_TEST_MODES:
+            _log.warning(
+                "The motors will spin during this procedure. "
+                "Make sure the robot is placed on a stand or has enough free space "
+                "around it, and keep clear of the wheels."
+            )
 
-        if hardware in (TestMode.ALL, TestMode.FIRMWARE):
-            if board_type == BoardType.LEOCORE:
-                results.append(
-                    (
-                        "Firmware version",
-                        tester.test_firmware_version(board_type, firmware_version),
-                    )
-                )
+            if get_confirmation_prompt("Do you want to start the motor tests?"):
+                results += _run_motor_tests(tester, hardware, board_type)
             else:
-                _log.warning("CORE2 detected, the firmware version is not checked.")
-
-        if hardware in (TestMode.ALL, TestMode.BATTERY):
-            results.append(("Battery voltage", tester.test_battery()))
-
-        if hardware in (TestMode.ALL, TestMode.IMU) and board_type == BoardType.LEOCORE:
-            results.append(("IMU", tester.test_imu()))
-
-        if hardware in (TestMode.ALL, TestMode.CAMERA):
-            results.append(("Camera", tester.test_camera()))
+                _log.info("Motor tests cancelled by the user.")
 
         if not results:
             _log.warning("No test was selected to run.")
@@ -396,6 +799,7 @@ def test_hw(
         return report_results(_log, results)
 
     finally:
+        tester.stop_motors()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
