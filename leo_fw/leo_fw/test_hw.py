@@ -700,16 +700,13 @@ def _run_sensor_tests(
     """
     results: list[tuple[str, bool]] = []
 
-    if TestMode.FIRMWARE in tests:
-        if board_type == BoardType.LEOCORE:
-            results.append(
-                (
-                    "Firmware version",
-                    tester.test_firmware_version(board_type, firmware_version),
-                )
+    if TestMode.FIRMWARE in tests and board_type is not None:
+        results.append(
+            (
+                "Firmware version",
+                tester.test_firmware_version(board_type, firmware_version),
             )
-        else:
-            _log.warning("CORE2 detected, the firmware version is not checked.")
+        )
 
     if TestMode.BATTERY in tests:
         results.append(("Battery voltage", tester.test_battery()))
@@ -790,8 +787,6 @@ def test_hw(
     try:
         board_type: Optional[BoardType] = None
 
-        # The sentinel the firmware node itself reports when it does not know,
-        # and which test_firmware_version already rejects
         firmware_version = "<unknown>"
 
         if tests & FIRMWARE_INFO_TESTS:
