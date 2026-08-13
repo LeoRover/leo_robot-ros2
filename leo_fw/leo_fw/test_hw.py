@@ -21,7 +21,7 @@
 import os
 import time
 from enum import Enum
-from typing import Optional
+from typing import Optional, TypeVar
 
 import rclpy
 from rclpy.node import Node
@@ -53,6 +53,8 @@ CAMERA_SAMPLES = 1
 
 _log = get_logger("test_hw")
 
+MsgT = TypeVar("MsgT")
+
 
 class TestMode(Enum):
     FIRMWARE = "firmware"
@@ -76,39 +78,64 @@ class HardwareTester:
         self.logger = get_logger("HardwareTester")
         self.node = node
 
-        self.is_new_imu_data = False
-        self.is_new_battery_data = False
-        self.is_new_camera_data = False
+    def _collect_samples(
+        self,
+        msg_type: type[MsgT],
+        topic: str,
+        sample_count: int,
+        timeout: float,
+    ) -> list[MsgT]:
+        """
+        Subscribe to a topic, collect a fixed number of fresh messages, and
+        unsubscribe.
 
-        self.imu_data = Imu()
-        self.battery_data = Float32()
-        self.camera_data = Image()
+        The subscription only exists for the duration of the call, so a test
+        never receives data from a topic it does not validate.
 
-        ### Subscriptions
+        :param msg_type: Type of the messages to collect
+        :type msg_type: type[MsgT]
+        :param topic: Topic to subscribe to
+        :type topic: str
+        :param sample_count: Number of messages to collect
+        :type sample_count: int
+        :param timeout: Longest accepted gap between two messages, in seconds
+        :type timeout: float
+        :return: The collected messages
+        :rtype: list[MsgT]
+        :raises TimeoutError: If the messages stop arriving
+        """
+        samples: list[MsgT] = []
 
-        self.battery_sub = node.create_subscription(
-            Float32, "firmware/battery", self.battery_callback, qos_profile_sensor_data
+        subscription = self.node.create_subscription(
+            msg_type, topic, samples.append, qos_profile_sensor_data
         )
-        self.imu_sub = node.create_subscription(
-            Imu, "firmware/imu", self.imu_callback, qos_profile_sensor_data
-        )
-        self.camera_sub = node.create_subscription(
-            Image, "camera/image_color", self.camera_callback, qos_profile_sensor_data
-        )
 
-        spin_for(self.node, TOPIC_DISCOVERY_TIME)
+        try:
+            # Let the subscription match with the publisher, then drop whatever
+            # arrived while it did, so that every sample is collected fresh
+            spin_for(self.node, TOPIC_DISCOVERY_TIME)
+            samples.clear()
 
-    def battery_callback(self, data: Float32) -> None:
-        self.battery_data = data
-        self.is_new_battery_data = True
+            collected = 0
+            time_last_msg = time.monotonic()
 
-    def imu_callback(self, data: Imu) -> None:
-        self.imu_data = data
-        self.is_new_imu_data = True
+            while len(samples) < sample_count:
+                rclpy.spin_once(self.node, timeout_sec=timeout)
 
-    def camera_callback(self, data: Image) -> None:
-        self.camera_data = data
-        self.is_new_camera_data = True
+                time_now = time.monotonic()
+                if len(samples) > collected:
+                    collected = len(samples)
+                    time_last_msg = time_now
+                elif time_last_msg + timeout < time_now:
+                    msg = (
+                        f"No message received on {topic} within {timeout:.2f} s "
+                        f"({collected}/{sample_count} samples collected)"
+                    )
+                    raise TimeoutError(msg)
+
+            return samples[:sample_count]
+        finally:
+            self.node.destroy_subscription(subscription)
 
     def test_firmware_version(
         self, board_type: BoardType, current_version: str
@@ -155,7 +182,9 @@ class HardwareTester:
             with log_step("Validating IMU data"):
                 imu_valid = parse_yaml(os.path.join(self.path, "imu.yaml"))["imu"]
 
-                samples = self._collect_imu_samples(IMU_SAMPLES, imu_valid["timeout"])
+                samples = self._collect_samples(
+                    Imu, "firmware/imu", IMU_SAMPLES, imu_valid["timeout"]
+                )
                 self._validate_imu_samples(samples, imu_valid)
         except (TimeoutError, ValueError) as exc:
             self.logger.error(
@@ -165,39 +194,6 @@ class HardwareTester:
             )
             return False
         return True
-
-    def _collect_imu_samples(self, sample_count: int, timeout: float) -> list[Imu]:
-        """
-        Collect a fixed number of fresh IMU messages.
-
-        :param sample_count: Number of messages to collect
-        :type sample_count: int
-        :param timeout: Longest accepted gap between two messages, in seconds
-        :type timeout: float
-        :return: The collected messages
-        :rtype: list[Imu]
-        :raises TimeoutError: If the messages stop arriving
-        """
-        samples: list[Imu] = []
-        time_last_msg = time.monotonic()
-
-        while len(samples) < sample_count:
-            rclpy.spin_once(self.node, timeout_sec=timeout)
-
-            time_now = time.monotonic()
-            if time_last_msg + timeout < time_now:
-                msg = (
-                    f"No IMU message received within {timeout:.2f} s "
-                    f"({len(samples)}/{sample_count} samples collected)"
-                )
-                raise TimeoutError(msg)
-
-            if self.is_new_imu_data:
-                time_last_msg = time_now
-                self.is_new_imu_data = False
-                samples.append(self.imu_data)
-
-        return samples
 
     def _validate_imu_samples(self, samples: list[Imu], limits: dict) -> None:
         """
@@ -264,8 +260,11 @@ class HardwareTester:
                     "battery"
                 ]
 
-                samples = self._collect_battery_samples(
-                    BATTERY_SAMPLES, batt_valid["timeout"]
+                samples = self._collect_samples(
+                    Float32,
+                    "firmware/battery",
+                    BATTERY_SAMPLES,
+                    batt_valid["timeout"],
                 )
                 self._validate_battery_samples(samples, batt_valid)
         except (TimeoutError, ValueError) as exc:
@@ -273,47 +272,12 @@ class HardwareTester:
             return False
         return True
 
-    def _collect_battery_samples(
-        self, sample_count: int, timeout: float
-    ) -> list[float]:
-        """
-        Collect a fixed number of fresh battery voltage readings.
-
-        :param sample_count: Number of readings to collect
-        :type sample_count: int
-        :param timeout: Longest accepted gap between two messages, in seconds
-        :type timeout: float
-        :return: The collected voltages
-        :rtype: list[float]
-        :raises TimeoutError: If the messages stop arriving
-        """
-        samples: list[float] = []
-        time_last_msg = time.monotonic()
-
-        while len(samples) < sample_count:
-            rclpy.spin_once(self.node, timeout_sec=timeout)
-
-            time_now = time.monotonic()
-            if time_last_msg + timeout < time_now:
-                msg = (
-                    f"No battery message received within {timeout:.2f} s "
-                    f"({len(samples)}/{sample_count} samples collected)"
-                )
-                raise TimeoutError(msg)
-
-            if self.is_new_battery_data:
-                time_last_msg = time_now
-                self.is_new_battery_data = False
-                samples.append(self.battery_data.data)
-
-        return samples
-
-    def _validate_battery_samples(self, samples: list[float], limits: dict) -> None:
+    def _validate_battery_samples(self, samples: list[Float32], limits: dict) -> None:
         """
         Validate every collected voltage reading against the configured limits.
 
-        :param samples: The collected voltages
-        :type samples: list[float]
+        :param samples: The collected battery messages
+        :type samples: list[Float32]
         :param limits: The "battery" section of the battery.yaml file
         :type limits: dict
         :raises ValueError: If any reading is outside of the valid range
@@ -321,19 +285,21 @@ class HardwareTester:
         voltage_min = limits["voltage_min"]
         voltage_max = limits["voltage_max"]
 
-        too_low = [voltage for voltage in samples if voltage <= voltage_min]
-        too_high = [voltage for voltage in samples if voltage >= voltage_max]
+        voltages = [sample.data for sample in samples]
+
+        too_low = [voltage for voltage in voltages if voltage <= voltage_min]
+        too_high = [voltage for voltage in voltages if voltage >= voltage_max]
 
         failures: list[str] = []
 
         if too_low:
             failures.append(
-                f"{len(too_low)}/{len(samples)} samples at or below the minimum "
+                f"{len(too_low)}/{len(voltages)} samples at or below the minimum "
                 f"of {voltage_min:.2f} V, lowest {min(too_low):.2f} V"
             )
         if too_high:
             failures.append(
-                f"{len(too_high)}/{len(samples)} samples at or above the maximum "
+                f"{len(too_high)}/{len(voltages)} samples at or above the maximum "
                 f"of {voltage_max:.2f} V, highest {max(too_high):.2f} V"
             )
 
@@ -355,44 +321,16 @@ class HardwareTester:
                     "camera"
                 ]
 
-                self._collect_camera_samples(CAMERA_SAMPLES, camera_valid["timeout"])
+                self._collect_samples(
+                    Image,
+                    "camera/image_color",
+                    CAMERA_SAMPLES,
+                    camera_valid["timeout"],
+                )
         except TimeoutError as exc:
             self.logger.error("Camera test failed: %s", exc)
             return False
         return True
-
-    def _collect_camera_samples(self, sample_count: int, timeout: float) -> list[Image]:
-        """
-        Collect a fixed number of fresh camera frames.
-
-        :param sample_count: Number of frames to collect
-        :type sample_count: int
-        :param timeout: Longest accepted gap between two frames, in seconds
-        :type timeout: float
-        :return: The collected frames
-        :rtype: list[Image]
-        :raises TimeoutError: If the frames stop arriving
-        """
-        samples: list[Image] = []
-        time_last_msg = time.monotonic()
-
-        while len(samples) < sample_count:
-            rclpy.spin_once(self.node, timeout_sec=timeout)
-
-            time_now = time.monotonic()
-            if time_last_msg + timeout < time_now:
-                msg = (
-                    f"No camera message received within {timeout:.2f} s "
-                    f"({len(samples)}/{sample_count} samples collected)"
-                )
-                raise TimeoutError(msg)
-
-            if self.is_new_camera_data:
-                time_last_msg = time_now
-                self.is_new_camera_data = False
-                samples.append(self.camera_data)
-
-        return samples
 
 
 def test_hw(
@@ -428,8 +366,7 @@ def test_hw(
 
             board_type, firmware_version = firmware_info
 
-        with log_step("Initializing the hardware tester"):
-            tester = HardwareTester(node)
+        tester = HardwareTester(node)
 
         results: list[tuple[str, bool]] = []
 
