@@ -10,8 +10,6 @@ from leo_fw.test_hw import TestMode
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Test Leo Rover hardware",
-        epilog="ROS arguments can be passed after --ros-args, "
-        "e.g. --ros-args -r __ns:=/leo",
     )
 
     parser.add_argument(
@@ -26,9 +24,9 @@ def main() -> None:
         + ", ".join(str(mode) for mode in TestMode),
     )
 
-    args, ros_args = parser.parse_known_args()
+    args, _ = parser.parse_known_args()
 
-    sys.exit(leo_fw.test_hw(hardware=args.hardware, ros_args=[sys.argv[0]] + ros_args))
+    sys.exit(leo_fw.test_hw(hardware=args.hardware))
 
 
 if __name__ == "__main__":

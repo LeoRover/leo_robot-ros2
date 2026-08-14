@@ -752,7 +752,6 @@ def _run_motor_tests(
 
 def test_hw(
     hardware: Collection[TestMode] = (TestMode.ALL,),
-    ros_args: Optional[list[str]] = None,
 ) -> int:
     """
     Run the hardware tests.
@@ -762,8 +761,6 @@ def test_hw(
 
     :param hardware: Which of the tests to run, in any order
     :type hardware: Collection[TestMode]
-    :param ros_args: Arguments forwarded to rclpy, or None to use sys.argv
-    :type ros_args: Optional[list[str]]
     :return: 0 if every check passed, 1 otherwise
     :rtype: int
     """
@@ -772,7 +769,7 @@ def test_hw(
     tests = _resolve_tests(hardware)
 
     with log_step("Initializing ROS node"):
-        rclpy.init(args=ros_args)
+        rclpy.init()
         node = Node("leo_hardware_tester")
         spin_for(node, NODE_DISCOVERY_TIME)
 
