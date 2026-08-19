@@ -1,4 +1,4 @@
-# Copyright 2022-2023 Fictionlab sp. z o.o.
+# Copyright 2022-2026 Fictionlab sp. z o.o.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,10 @@ from rclpy.client import Client
 
 from std_srvs.srv import Trigger
 
+from .console import get_logger, log_step
+
+_log = get_logger("board")
+
 
 class BoardType(Enum):
     LEOCORE = "leocore"
@@ -44,7 +48,7 @@ def determine_board(node: rclpy.Node) -> Optional[BoardType]:
 
     board_type = None
 
-    if node.get_namespace() + "firmware/get_board_type" in [
+    if node.resolve_service_name("firmware/get_board_type") in [
         service[0] for service in services
     ]:
         get_board_type: Client = node.create_client(Trigger, "firmware/get_board_type")
@@ -69,7 +73,7 @@ def check_firmware_version(node: rclpy.Node) -> str:
 
     firmware_version = "<unknown>"
 
-    if node.get_namespace() + "firmware/get_firmware_version" in [
+    if node.resolve_service_name("firmware/get_firmware_version") in [
         service[0] for service in services
     ]:
         get_firmware_version: Client = node.create_client(
@@ -84,3 +88,54 @@ def check_firmware_version(node: rclpy.Node) -> str:
         get_firmware_version.destroy()
 
     return firmware_version
+
+
+def check_firmware_node(node: rclpy.Node) -> Optional[tuple[BoardType, str]]:
+    """
+    Verify that the firmware node is running and report what it runs.
+
+    Logs the board type and the firmware version the node reports.
+
+    :param node: Node used to query the ROS graph
+    :type node: rclpy.Node
+    :return: The board type and the reported firmware version, or None if the
+        firmware node is not usable
+    :rtype: Optional[tuple[BoardType, str]]
+    """
+    try:
+        with log_step("Checking if firmware node is active"):
+            if (
+                "firmware",
+                node.get_namespace(),
+            ) not in node.get_node_names_and_namespaces():
+                msg = (
+                    "Firmware node is not active. "
+                    "Try to flash the firmware or restart the Micro-ROS Agent."
+                )
+                raise ValueError(msg)
+
+        with log_step("Determining the board type"):
+            board_type = determine_board(node)
+            if board_type is None:
+                msg = (
+                    "Can not determine board type. "
+                    "Update the firmware and try to rerun the script."
+                )
+                raise ValueError(msg)
+    except ValueError as exc:
+        _log.error("Will not be able to validate hardware: %s", exc)
+        return None
+
+    with log_step("Reading the current firmware version"):
+        current_firmware_version = check_firmware_version(node)
+
+    if current_firmware_version == "<unknown>":
+        _log.warning("Could not read the firmware version.")
+
+    if board_type == BoardType.CORE2:
+        _log.info("Board type: Husarion CORE2")
+    elif board_type == BoardType.LEOCORE:
+        _log.info("Board type: LeoCore")
+    _log.info("Firmware version: %s", current_firmware_version)
+
+    return board_type, current_firmware_version

@@ -1,21 +1,33 @@
 #!/usr/bin/env python3
 
+import sys
 import argparse
 
 import leo_fw
 from leo_fw.test_hw import TestMode
 
-parser = argparse.ArgumentParser(description="Test controller controller")
 
-parser.add_argument(
-    "-m",
-    dest="hardware",
-    type=TestMode,
-    choices=list(TestMode),
-    default="all",
-    help="select test mode",
-)
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Test Leo Rover hardware",
+    )
 
-args = parser.parse_args()
+    parser.add_argument(
+        "-m",
+        dest="hardware",
+        type=TestMode,
+        choices=list(TestMode),
+        nargs="+",
+        default=[TestMode.ALL],
+        metavar="TEST",
+        help="select the tests to run, space separated: "
+        + ", ".join(str(mode) for mode in TestMode),
+    )
 
-leo_fw.test_hw(hardware=args.hardware)
+    args, _ = parser.parse_known_args()
+
+    sys.exit(leo_fw.test_hw(hardware=args.hardware))
+
+
+if __name__ == "__main__":
+    main()

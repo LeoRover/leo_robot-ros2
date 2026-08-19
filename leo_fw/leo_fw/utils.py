@@ -1,4 +1,4 @@
-# Copyright 2022-2023 Fictionlab sp. z o.o.
+# Copyright 2022-2026 Fictionlab sp. z o.o.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,12 @@ from __future__ import annotations
 
 import shutil
 import sys
+import time
 from enum import Enum
-from typing import TypeVar, Optional
+from typing import TypeVar
+
+import rclpy
+from rclpy.node import Node
 
 import yaml  # type: ignore
 
@@ -66,14 +70,6 @@ def print_warn(msg: str):
 
 def print_fail(msg: str):
     print(CSIColor.RED + msg + CSIColor.RESET)
-
-
-def print_test_result(res: tuple[bool, Optional[str]]):
-    if res[0]:
-        print_ok("PASSED")
-    else:
-        assert res[1] is not None
-        print_fail("FAILED (" + res[1] + ")")
 
 
 def query_yes_no(question: str, default: str = "yes") -> bool:
@@ -123,6 +119,16 @@ def prompt_options(options: list[tuple[str, T]], default: int = 1) -> T:
             _, selected = options[selected_nr]
             return selected
         print("Please select a valid option")
+
+
+def spin_for(node: Node, duration: float) -> None:
+    deadline = time.monotonic() + duration
+
+    while rclpy.ok():
+        timeout = deadline - time.monotonic()
+        if timeout <= 0.0:
+            break
+        rclpy.spin_once(node, timeout_sec=timeout)
 
 
 def parse_yaml(file_path: str):
